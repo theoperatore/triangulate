@@ -4,11 +4,11 @@ var cvs = document.createElement('div'),
     opts = {};
 
 cvs.style.width = window.innerWidth + "px";
-cvs.style.height = window.innerHeight * (3/4) + "px";
+cvs.style.height = window.innerHeight - 100 + "px";
 document.body.appendChild(cvs);
 document.addEventListener('resize', function() {
   cvs.style.width = window.innerWidth + "px";
-  cvs.style.height = window.innerHeight * (3/4) + "px";
+  cvs.style.height = window.innerHeight - 100 + "px";
 }, false);
 
 cvs.innerHTML = "fetching location...";
@@ -30,7 +30,7 @@ if (navigator && navigator.geolocation) {
     },
     function(error) {
       console.log(error);
-      cvs.innerHTML = "Error obtaining GPS location from network: " + error;
+      cvs.innerHTML = "Error obtaining GPS location from network: " + error.message;
     }, {enableHighAccuracy: true});
 }
 else {
