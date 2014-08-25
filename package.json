@@ -15,8 +15,5 @@
   "devDependencies": {
     "beefy": "^2.1.1",
     "browserify": "^5.10.1"
-  },
-  "dependencies": {
-    "hd-canvas": "^0.1.6"
   }
 }
