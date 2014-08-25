@@ -3,11 +3,11 @@ var cvs = document.createElement('div'),
     opts = {};
 
 cvs.style.width = window.innerWidth + "px";
-cvs.style.height = window.innerHeight - 100 + "px";
+cvs.style.height = window.innerHeight - 25 + "px";
 document.body.appendChild(cvs);
 document.addEventListener('resize', function() {
   cvs.style.width = window.innerWidth + "px";
-  cvs.style.height = window.innerHeight - 100 + "px";
+  cvs.style.height = window.innerHeight - 25 + "px";
 }, false);
 
 cvs.innerHTML = "fetching location...";
