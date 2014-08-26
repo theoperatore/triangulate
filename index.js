@@ -14,6 +14,7 @@ cvs.innerHTML = "fetching location...";
 
 if (navigator && navigator.geolocation) {
   var pos = navigator.geolocation.getCurrentPosition(
+    
     // success
     function(loc) {
       console.log(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy, loc);
@@ -41,14 +42,7 @@ function convertToDMS(coords) {
   var out = '',
       lat = coords.latitude,
       lng = coords.longitude,
-      degLat = 0,
-      degLng = 0,
-      minLat = 0,
-      minLng = 0,
-      secLat = 0,
-      secLng = 0,
-      dirLat,
-      dirLng;
+      degLat, degLng, minLat, minLng, secLat, secLng, dirLat, dirLng;
 
   //latitude - N/S (pos/neg)
   degLat = (lat | 0);
