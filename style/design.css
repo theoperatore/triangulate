@@ -23,7 +23,7 @@ p {
   margin:10px 20px;
   border: 0;
   border-radius: 5pt;
-  display:inline-block;
+  display:block;
 
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -32,3 +32,4 @@ p {
 .good { background-color: #80C54B; }
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }
+.save { background-color: #70d2ff; }

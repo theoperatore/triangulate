@@ -4,8 +4,8 @@
   "description": "Track gps points and triangulate",
   "main": "index.js",
   "scripts": {
-    "test": "beefy index.js:bundle.js",
-    "deploy": "browserify index.js -o bundle.js"
+    "test": "beefy index.js:scripts/bundle.js",
+    "deploy": "browserify index.js -o scripts/bundle.js"
   },
   "keywords": [
     "triangulate",

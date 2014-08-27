@@ -44,12 +44,13 @@ function convertToDMS(coords) {
   return out;
 }
 
-var save  = document.getElementById('saveGPS'),
+var mark  = document.getElementById('saveGPS'),
     find  = document.getElementById('startGPS'),
     clear = document.getElementById('clearPoints'),
-    calc  = document.getElementById('calcCenter');
+    calc  = document.getElementById('calcCenter'),
+    save  = document.getElementById('saveCalc');
 
-save.addEventListener('click', function(ev) {
+mark.addEventListener('click', function(ev) {
   if (curr.latitude && curr.longitude) {
     var savedMarker = new google.maps.Marker({
       position: new google.maps.LatLng(curr.latitude, curr.longitude),
@@ -203,4 +204,8 @@ calc.addEventListener('click', function() {
   };
   document.getElementById('center').innerHTML = convertToDMS(p);
 
+}, false);
+
+save.addEventListener('click', function() {
+  alert("I do nothing! But in the future I will save all marker coordinates, the triangulated coordinates, and _hopefully_ any azimuths for external use. Hurray!");
 }, false);

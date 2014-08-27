@@ -45,12 +45,13 @@ function convertToDMS(coords) {
   return out;
 }
 
-var save  = document.getElementById('saveGPS'),
+var mark  = document.getElementById('saveGPS'),
     find  = document.getElementById('startGPS'),
     clear = document.getElementById('clearPoints'),
-    calc  = document.getElementById('calcCenter');
+    calc  = document.getElementById('calcCenter'),
+    save  = document.getElementById('saveCalc');
 
-save.addEventListener('click', function(ev) {
+mark.addEventListener('click', function(ev) {
   if (curr.latitude && curr.longitude) {
     var savedMarker = new google.maps.Marker({
       position: new google.maps.LatLng(curr.latitude, curr.longitude),
@@ -206,6 +207,10 @@ calc.addEventListener('click', function() {
 
 }, false);
 
+save.addEventListener('click', function() {
+  alert("I do nothing! But in the future I will save all marker coordinates, the triangulated coordinates, and _hopefully_ any azimuths for external use. Hurray!");
+}, false);
+
 },{"./scripts/save":2}],2:[function(require,module,exports){
 exports.save = function(lat, lng) {
   "use strict";
@@ -225,4 +230,17 @@ exports.load = function() {
   var out = localStorage.getItem('points');
   return (out) ? JSON.parse(out) : [];
 };
+
+exports.saveComputedData = function(data) {
+  "use strict";
+
+  // expand to append to computed
+  // each new array entry should be one bird
+  localStorage.setItem('computed', JSON.stringify(data));
+}
+
+exports.loadComputedData = function() {
+  "use strict";
+  return JSON.parse(localStorage.getItem('computed')) || [];
+}
 },{}]},{},[1]);
