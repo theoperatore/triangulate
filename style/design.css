@@ -3,8 +3,9 @@
   margin:0
 }
 p {
-  text-align: center;
+  /*text-align: center;*/
   font-size:1.5em;
+  margin-left: 20px;
 }
 .hide {
   display:none;
@@ -15,11 +16,6 @@ p {
   -moz-transition: all 250ms;
   transition: all 250ms;
 }
-
-#map-canvas {
-
-}
-
 .superButton {
   color: #fff;
   font-size: 1.5em;
