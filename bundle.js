@@ -7,7 +7,10 @@ var cvs = document.getElementById('map-canvas'),
     opts = {},
     curr = {},
     markers = [],
+    positions = [],
     map,
+    center,
+    poly,
     cMarker;
 
 cvs.style.width = window.innerWidth + "px";
@@ -28,7 +31,7 @@ function convertToDMS(coords) {
   degLat = Math.abs(degLat);
   out += degLat + "&deg; " + minLat + "' " + secLat + "\" " + dirLat;
 
-  out += " -- ";
+  out += " - ";
 
   //longitude E/W (pos/neg)
   degLng = (lng | 0);
@@ -44,19 +47,22 @@ function convertToDMS(coords) {
 
 var save  = document.getElementById('saveGPS'),
     find  = document.getElementById('startGPS'),
-    clear = document.getElementById('clearPoints');
+    clear = document.getElementById('clearPoints'),
+    calc  = document.getElementById('calcCenter');
 
 save.addEventListener('click', function(ev) {
   if (curr.latitude && curr.longitude) {
     var savedMarker = new google.maps.Marker({
       position: new google.maps.LatLng(curr.latitude, curr.longitude),
       icon : {
-        url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B"
+        url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
+        optimized: false
       },
       map : map
     });
     CoordHandler.save(curr.latitude, curr.longitude);
     markers.push(savedMarker);
+    positions.push(new google.maps.LatLng(curr.latitude, curr.longitude));
   }
 }, false);
 
@@ -86,12 +92,14 @@ find.addEventListener('click', function(ev) {
           markers.push(
             new google.maps.Marker({
               icon: {
-                url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B"
+                url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
+                optimized: false
               },
               position: new google.maps.LatLng(marker.latitude, marker.longitude),
               map: map
             })
           );
+          positions.push(new google.maps.LatLng(marker.latitude, marker.longitude));
         });
 
         /***********************************************************
@@ -131,9 +139,70 @@ clear.addEventListener('click', function(ev) {
     marker.setMap(null);
   });
   markers.length = 0;
+  positions.length = 0;
+
+  if (center) center.setMap(null);
+  if (poly) {
+    poly.setMap(null);
+    poly = null;
+  }
+  document.getElementById('center').innerHTML = "";
 
   // erase storage
   localStorage.removeItem('points');
+}, false);
+
+calc.addEventListener('click', function() {
+
+  if (markers.length < 2) {
+    alert("Must have 2 or more points to find Hawky!");
+    return;
+  }
+
+  var bounds = new google.maps.LatLngBounds();
+  positions.forEach(function(pos) {
+    bounds.extend(pos);
+  });
+
+  console.log('center exists check...');
+  if (!center) {
+
+    console.log('creating new center');
+    center = new google.maps.Marker({
+      position: bounds.getCenter(),
+      icon: {
+        url : "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|6929FF"
+      },
+      map : map
+    });
+  }
+  else {
+    console.log('moving existing center');
+    center.setPosition(bounds.getCenter());
+  }
+
+  if (poly) {
+    poly = null;
+  }
+
+  console.log('creating polygon...');
+  poly = new google.maps.Polygon({
+    paths: positions,
+    strokeColor: "#00aeff",
+    strokeOpacity: 0.8,
+    strokeWeight: 2,
+    fillColor: "#70d2ff",
+    fillOpacity: 0.6
+  });
+
+  poly.setMap(map);
+
+  var p = {
+    latitude:  bounds.getCenter().lat(),
+    longitude: bounds.getCenter().lng()
+  };
+  document.getElementById('center').innerHTML = convertToDMS(p);
+
 }, false);
 
 },{"./scripts/save":2}],2:[function(require,module,exports){
