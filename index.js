@@ -163,7 +163,10 @@ calc.addEventListener('click', function() {
     bounds.extend(pos);
   });
 
+  console.log('center exists check...');
   if (!center) {
+
+    console.log('creating new center');
     center = new google.maps.Marker({
       position: bounds.getCenter(),
       icon: {
@@ -173,12 +176,15 @@ calc.addEventListener('click', function() {
     });
   }
   else {
+    console.log('moving existing center');
     center.setPosition(bounds.getCenter());
   }
 
   if (poly) {
     poly = null;
   }
+
+  console.log('creating polygon...');
   poly = new google.maps.Polygon({
     paths: positions,
     strokeColor: "#00aeff",
