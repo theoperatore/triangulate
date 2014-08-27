@@ -1,0 +1,38 @@
+* {
+  padding:0;
+  margin:0
+}
+p {
+  text-align: center;
+  font-size:1.5em;
+}
+.hide {
+  display:none;
+}
+#compass {
+  width: 320px;
+  -webkit-transition: all 250ms;
+  -moz-transition: all 250ms;
+  transition: all 250ms;
+}
+
+#map-canvas {
+
+}
+
+.superButton {
+  color: #fff;
+  font-size: 1.5em;
+  padding: 5px 20px;
+  margin:10px 20px;
+  border: 0;
+  border-radius: 5pt;
+  display:inline-block;
+
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.good { background-color: #80C54B; }
+.bad { background-color: #ff6161; }
+.neutral { background-color: #b0b0b0; }

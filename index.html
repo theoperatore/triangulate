@@ -1,18 +1,21 @@
 <!DOCTYPE html>
 <head>
+  <title>Triangulate those Raptors!</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-startup-image" href="./images/hawk-scream-loading.png">
+  <link rel="apple-touch-icon" href="./images/hawk-shortcut.png">
+
   <meta name="viewport" content="width=device-width, user-scalable=no">
-  <style type="text/css">
-    * {
-      padding:0;
-      margin:0
-    }
-    p {
-      text-align: center;
-      font-size:1.5em;
-    }
-  </style>
+  <link rel="stylesheet" type="text/css" href="./style/design.css">
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js"></script>
 </head>
 <body>
+  <div id='map-canvas'></div>
+  <p id='coords'></p>
+  <input class='superButton neutral' type='button' id='startGPS' value='Find Me'>
+  <input class='superButton good' type='button' id='saveGPS' value='Save Mark'>
+  <input class='superButton bad' type='button' id='clearPoints' value='Clear Marks'>
+
   <script type="text/javascript" src='bundle.js'></script>
 </body>
