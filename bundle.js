@@ -179,6 +179,7 @@ calc.addEventListener('click', function() {
   else {
     console.log('moving existing center');
     center.setPosition(bounds.getCenter());
+    center.setMap(map);
   }
 
   if (poly) {
