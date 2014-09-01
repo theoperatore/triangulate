@@ -98,7 +98,7 @@ find.addEventListener('click', function(ev) {
           / Dev event listener to help project points and azimuths
           /
           /***********************************************************/
-          
+          /*
           google.maps.event.addListener(app.map, 'center_changed', function() {
             
             app.currLoc.latitude = app.map.getCenter().lat();
@@ -108,7 +108,7 @@ find.addEventListener('click', function(ev) {
             document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
             app.currMarker.setPosition(app.map.getCenter());
           });
-          
+          */
           
         }
 
@@ -512,6 +512,9 @@ exports.computeCenter = function(map, edges) {
 // intersetion by using determinants. 
 //
 // Returns the corresponding LatLng object of the intersection point.
+//
+//
+// TODO: Should update to sort lines in order clockwise or counter.
 //
 exports.intersects = function(map, lat1,lat2, lat3,lat4) {
   var bottom, x,y, p1,p2,p3,p4, out;

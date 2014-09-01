@@ -54,6 +54,9 @@ exports.computeCenter = function(map, edges) {
 //
 // Returns the corresponding LatLng object of the intersection point.
 //
+//
+// TODO: Should update to sort lines in order clockwise or counter.
+//
 exports.intersects = function(map, lat1,lat2, lat3,lat4) {
   var bottom, x,y, p1,p2,p3,p4, out;
 

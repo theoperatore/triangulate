@@ -97,7 +97,7 @@ find.addEventListener('click', function(ev) {
           / Dev event listener to help project points and azimuths
           /
           /***********************************************************/
-          
+          /*
           google.maps.event.addListener(app.map, 'center_changed', function() {
             
             app.currLoc.latitude = app.map.getCenter().lat();
@@ -107,7 +107,7 @@ find.addEventListener('click', function(ev) {
             document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
             app.currMarker.setPosition(app.map.getCenter());
           });
-          
+          */
           
         }
 
