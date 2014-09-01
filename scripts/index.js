@@ -13,7 +13,52 @@ var cvs   = document.getElementById('map-canvas'),
     opts  = {
       zoom   : 14,
       azDist : 1609.34
-    };
+    },
+    count = 0;
+
+//
+// returns an ID for makers
+//
+function nextID() {
+  return ++count;
+}
+
+//
+// Adds an Info window and handles deleting a marker and azimuth line
+//
+function addMarkerTooltip(marker, azLine) {
+  var infoWindow = new google.maps.InfoWindow({
+    content : "<input type='button' id='mark" + marker.__markerID + "' class='superButton bad' value='Delete'>"
+  });
+
+  google.maps.event.addListener(marker, 'click', function(ev) {
+    infoWindow.open(app.map, marker);
+  });
+
+  google.maps.event.addListener(infoWindow, 'domready', function() {
+    console.log('dom ready');
+    document.getElementById('mark' + marker.__markerID).addEventListener('click', function(ev) {
+      
+      app.markers.forEach(function(mark, i) {
+        if (mark.__markerID === marker.__markerID) {
+          mark.setMap(null);
+          app.markers.splice(i, 1);
+        }
+      });
+
+      app.azLines.forEach(function(line, i) {
+        if (line.__azLineID === azLine.__azLineID) {
+          line.setMap(null);
+          app.azLines.splice(i, 1);
+        }
+      });
+
+      util.removeMark(marker);
+      infoWindow.close();
+
+    });
+  })
+}
 
 //
 // 'Find Me' input button
@@ -107,8 +152,12 @@ find.addEventListener('click', function(ev) {
               }
             );
 
+            m.__markerID  = mark.markerID;
+            az.__azLineID = mark.markerID;
+            count = Math.max(count, mark.markerID);
             app.markers.push(m);
             app.azLines.push(az);
+            addMarkerTooltip(m, az);
 
           });
 
@@ -165,6 +214,10 @@ calc.addEventListener('click', function() {
     alert("Must have 3 or more points to find " + app.hawkID + "!");
     return;
   }
+
+  
+  // Erase all current triangulation data first
+
 
   for (var i = 0, curr, next; i < app.markers.length; i++) {
     curr = app.markers[i];
@@ -309,34 +362,6 @@ erase.addEventListener('click', function(ev) {
 },false);
 
 //
-// Adds an Info window and handles deleting a marker and azimuth line
-//
-function addMarkerTooltip(markerID, azLineID) {
-  var infoWindow = new google.maps.InfoWindow({
-    content : "<input type='button' id='mark" + markerID + "' class='superButton bad' value='Delete'>"
-  });
-
-  google.maps.event.addListener(app.markers[markerID], 'click', function(ev) {
-    infoWindow.open(app.map, app.markers[markerID]);
-  });
-
-  google.maps.event.addListener(infoWindow, 'domready', function() {
-    console.log('dom ready');
-    document.getElementById('mark' + markerID).addEventListener('click', function(ev) {
-      
-      app.markers[markerID].setMap(null);
-      app.azLines[azLineID].setMap(null);
-
-      app.markers.splice(markerID, 1);
-      app.azLines.splice(azLineID, 1);
-
-      infoWindow.close();
-
-    });
-  })
-}
-
-//
 // Modal input event listener for hawkID
 //
 document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
@@ -398,14 +423,17 @@ document.getElementById('modal-azimuth-ok').addEventListener('click', function(e
     );
 
     //save shapes
+    hawkMarker.__markerID  = nextID();
+    az.__azLineID = hawkMarker.__markerID;
     app.markers.push(hawkMarker);
     app.azLines.push(az);
-    addMarkerTooltip(app.markers.length - 1, app.azLines.length - 1);
+    addMarkerTooltip(hawkMarker, az);
 
 
     console.log('adding mark', app.markers.length, app.azLines.length);
     // save mark
     util.saveMark(
+      hawkMarker.__markerID,
       app.hawkID,
       app.currLoc,
       heading,

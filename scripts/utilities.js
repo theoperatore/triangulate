@@ -132,6 +132,24 @@ exports.convertToDMS = function(coords) {
 }
 
 //
+// Handles removing a saved marker
+//
+exports.removeMark = function(marker) {
+  "use strick";
+
+  var locals = JSON.parse(localStorage.getItem('points'));
+  locals.forEach(function(local, i) {
+    console.log('searching', local, marker.__markerID);
+    if (local.markerID === marker.__markerID) {
+      console.log('found!');
+      locals.splice(i, 1);
+    }
+  });
+
+  localStorage.setItem('points', JSON.stringify(locals));
+};
+
+//
 // Appends the parameters id, coords, heading, computedOffsets
 // to the localStorage item 'points'.
 //
@@ -141,7 +159,7 @@ exports.convertToDMS = function(coords) {
 // 'points' will most likely be deleted when the user saves the computed
 // data for the current bird.
 //
-exports.saveMark = function(id, coords, heading, proj) {
+exports.saveMark = function(markerid, hawkid, coords, heading, proj) {
   "use strict";
   var local = localStorage.getItem('points'),
       points = (local) ? JSON.parse(local) : [],
@@ -150,7 +168,8 @@ exports.saveMark = function(id, coords, heading, proj) {
   out.coords  = coords;
   out.heading = heading;
   out.date = +new Date;
-  out.hawkID = id;
+  out.hawkID = hawkid;
+  out.markerID = markerid;
   out.computedOffsets = [
     {
       latitude : proj[0].lat(),
