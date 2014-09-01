@@ -380,6 +380,13 @@ document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev
 });
 
 //
+// Modal input event listener for canceling
+//
+document.getElementById('modal-azimuth-cancel').addEventListener('click', function() {
+  document.getElementById('modal-azimuth').classList.add('hide');
+}, false);
+
+//
 // Modal input event listener for computing a mark
 //
 document.getElementById('modal-azimuth-ok').addEventListener('click', function(ev) {
