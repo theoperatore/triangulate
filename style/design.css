@@ -2,19 +2,19 @@
   padding:0;
   margin:0
 }
-p {
-  /*text-align: center;*/
-  font-size:1.5em;
-  margin-left: 20px;
+#map-canvas {
+  position:fixed !important;
+  top:0;
+  left:0;
 }
-.hide {
-  display:none;
+.info {
+  padding: 10px 20px;
+  font-size: 1.05em;
 }
-#compass {
-  width: 320px;
-  -webkit-transition: all 250ms;
-  -moz-transition: all 250ms;
-  transition: all 250ms;
+.info:after {
+  content: " ";
+  display:table;
+  clear: both;
 }
 .superButton {
   color: #fff;
@@ -33,3 +33,6 @@ p {
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }
 .save { background-color: #70d2ff; }
+
+#calcCenter { margin-top: 2em;}
+#saveCalc { margin-bottom: 2em; }

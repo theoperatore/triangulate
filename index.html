@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <head>
-  <title>Triangulate those Raptors!</title>
+  <title>Hawk-ulate</title>
   
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="apple-touch-startup-image" href="./images/hawk-scream-loading.png">
@@ -10,26 +10,23 @@
   <link rel="shortcut icon" href="./images/hawk-shortcut.png"> 
   <meta name="viewport" content="width=device-width, user-scalable=no">
   <link rel="stylesheet" type="text/css" href="./style/design.css">
-  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry"></script>
 </head>
 <body>
   <div id='map-canvas'></div>
-  <p id='coords'></p>
-  <p id='center'></p>
-  <br>
-  <input class='superButton neutral' type='button' id='startGPS' value='Find Me'>
-  <input class='superButton good' type='button' id='saveGPS' value='Mark'>
-  <br>
-  <br>
-  <br>
-  <br>
-  <input class='superButton good' type='button' id='calcCenter' value='Triangulate'>
-  <input class='superButton save' type='button' id='saveCalc' value='Save'>
-  <br>
-  <br> 
-  <br>
-  <br>
-  <input class='superButton bad' type='button' id='clearPoints' value='Clear Marks'>
+  <div id='info-container'>
+    <div class='info'>
+      <div id='hawkID'></div>
+      <div id='coords'></div>
+      <div id='triangulateResults'></div>
+      <div id='circleDiameter'></div>
+    </div>
+    <input class='superButton neutral' type='button' id='startGPS' value='Find Me'>
+    <input class='superButton good' type='button' id='saveGPS' value='Mark'>
+    <input class='superButton good' type='button' id='calcCenter' value='Triangulate'>
+    <input class='superButton save' type='button' id='saveCalc' value='Save'>
+    <input class='superButton bad' type='button' id='clearPoints' value='Clear Marks'>
+  </div>
 
   <script type="text/javascript" src='./scripts/bundle.js'></script>
 </body>
