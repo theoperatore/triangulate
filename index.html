@@ -13,19 +13,37 @@
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry"></script>
 </head>
 <body>
-  <div id='map-canvas'></div>
-  <div id='info-container'>
-    <div class='info'>
-      <div id='hawkID'></div>
-      <div id='coords'></div>
-      <div id='triangulateResults'></div>
-      <div id='circleDiameter'></div>
+
+  <div class='hide' id='modal-hawkID'>
+    <div>
+      <p>Which hawk are you tracking?</p>
+      <input class='modalInput' type='text' id='modal-hawkID-input' placeholder='hawkID'>
+      <input class='superButton modal good' type='button' id='modal-hawkID-ok' value='Ok'>
     </div>
-    <input class='superButton neutral' type='button' id='startGPS' value='Find Me'>
-    <input class='superButton good' type='button' id='saveGPS' value='Mark'>
-    <input class='superButton good' type='button' id='calcCenter' value='Triangulate'>
-    <input class='superButton save' type='button' id='saveCalc' value='Save'>
-    <input class='superButton bad' type='button' id='clearPoints' value='Clear Marks'>
+  </div>
+  <div class='hide' id='modal-azimuth'>
+    <div>
+      <p>Azimuth of hawk?</p>
+      <input class='modalInput' type='text' id='modal-azimuth-input' placeholder='azimuth [1-360] degrees'>
+      <input class='superButton modal good' type='button' id='modal-azimuth-ok' value='Ok'>
+    </div>
+  </div>
+
+  <div id='appContainer'>
+    <div id='map-canvas'></div>
+    <div id='info-container'>
+      <div class='info'>
+        <div id='hawkID'></div>
+        <div id='coords'></div>
+        <div id='triangulateResults'></div>
+        <div id='circleDiameter'></div>
+      </div>
+      <input class='superButton neutral' type='button' id='startGPS' value='Find Me'>
+      <input class='superButton good' type='button' id='saveGPS' value='Mark'>
+      <input class='superButton good' type='button' id='calcCenter' value='Triangulate'>
+      <input class='superButton save' type='button' id='saveCalc' value='Save'>
+      <input class='superButton bad' type='button' id='clearPoints' value='Clear Marks'>
+    </div>
   </div>
 
   <script type="text/javascript" src='./scripts/bundle.js'></script>

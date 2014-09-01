@@ -117,13 +117,22 @@ find.addEventListener('click', function(ev) {
         else {
 
           if (!app.hawkID) {
-            // simple prompt with efficient-enough validation
-            (function getHawkID() {
-              app.hawkID = prompt("Which hawk are you tracking?");
-              if (app.hawkID === " " || !app.hawkID) {
-                getHawkID();
+
+            //show modal
+            document.getElementById('modal-hawkID').classList.toggle('hide');
+            document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
+              var id = document.getElementById('modal-hawkID-input').value;
+
+              if (!id || id === '' || id === ' ') {
+                alert('Please enter an ID!');
               }
-            })();
+              else {
+                document.getElementById('modal-hawkID').classList.add('hide');
+                app.hawkID = id;
+                document.getElementById('hawkID').innerHTML = app.hawkID;
+
+              }
+            });
           }
             
         }
@@ -151,13 +160,12 @@ find.addEventListener('click', function(ev) {
 // 'Mark' input button to save the current location
 // 
 mark.addEventListener('click', function(ev) {
+  var heading, hawkMarker;
 
   if (!app.map) {
     alert("GAH! GPS yourself first!");
     return;
   }
-
-  var heading = "", hawkMarker;
 
   // show new mark on map
   hawkMarker = new google.maps.Marker({
@@ -169,44 +177,48 @@ mark.addEventListener('click', function(ev) {
     map : app.map
   });
 
-  // simple prompt with efficient-enough validation
-  (function getHeading() {
-    heading = prompt("Azimuth of hawk?");
-    heading = parseInt(heading, 10);
-    if (heading === " " || heading === "") {
-      getHeading();
+  //show modal
+  document.getElementById('modal-azimuth').classList.toggle('hide');
+  document.getElementById('modal-azimuth-ok').addEventListener('click', function(ev) {
+    var azimuth = document.getElementById('modal-azimuth-input').value;
+    heading = parseInt(azimuth, 10);
+
+    if (!heading || !azimuth || azimuth === '' || azimuth === ' ') {
+      alert('Please enter a valid azimuth!');
     }
-  })();
+    else {
+      document.getElementById('modal-azimuth').classList.add('hide');
 
-  // use heading to project an azimuth line
-  hawkMarker.__hawkHeadings = util.computeHeadings(app.currLatLng, heading, opts.azDist);
-  
-  // draw azimuth line based on computed headings
-  var az = new google.maps.Polyline(
-    {
-      path : [
-        hawkMarker.__hawkHeadings[0],
-        hawkMarker.__hawkHeadings[1]
-      ],
-      strokeColor: "#00aeff",
-      strokeOpacity: 0.8,
-      strokeWeight: 4,
-      map : app.map
+      // use heading to project an azimuth line
+      hawkMarker.__hawkHeadings = util.computeHeadings(app.currLatLng, heading, opts.azDist);
+      
+      // draw azimuth line based on computed headings
+      var az = new google.maps.Polyline(
+        {
+          path : [
+            hawkMarker.__hawkHeadings[0],
+            hawkMarker.__hawkHeadings[1]
+          ],
+          strokeColor: "#00aeff",
+          strokeOpacity: 0.8,
+          strokeWeight: 4,
+          map : app.map
+        }
+      );
+
+      //save shapes
+      app.markers.push(hawkMarker);
+      app.azLines.push(az);
+
+      // save mark
+      util.saveMark(
+        app.hawkID,
+        app.currLoc,
+        heading,
+        hawkMarker.__hawkHeadings
+      );
     }
-  );
-
-  //save shapes
-  app.markers.push(hawkMarker);
-  app.azLines.push(az);
-
-  // save mark
-  util.saveMark(
-    app.hawkID,
-    app.currLoc,
-    heading,
-    hawkMarker.__hawkHeadings
-  );
-
+  }, false);
 }, false);
 
 //
