@@ -343,4 +343,4 @@ clear.addEventListener('click', function(ev) {
 // do a little styling quickly for our map
 cvs.style.width = window.innerWidth + "px";
 cvs.style.height = window.innerHeight * 2/3 + "px";
-document.getElementById('info-container').style['margin-top'] = window.innerHeight * (2/3) + "px";
+//document.getElementById('info-container').style['margin-top'] = window.innerHeight * (2/3) + "px";
