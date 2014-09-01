@@ -42,7 +42,7 @@ Sometimes, marks are not accurate: they get made accidently, you realize that th
 
 If you need to delete a mark for any reason, just tap the mark on the map. A dialog window will pop up with one button: `Delete`. This will remove the marker and the azimuth line from the map and will not be used in any calculations henceforth. 
 
-*NOTE: Deleted Markers can **NEVER** be recovered*
+NOTE: Deleted Markers can **NEVER** be recovered
 
 ### Starting over
 
