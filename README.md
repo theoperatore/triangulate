@@ -8,7 +8,7 @@ Usage
 
 ### Starting up!
 
-Just go to [this site](anpetersen.me/triangulate) to access the web app! It's optimized to be used from the homescreen so adding a shortcut is a *very good idea*.
+Just go to [this site](http://anpetersen.me/triangulate) to access the web app! It's optimized to be used from the homescreen so adding a shortcut is a *very good idea*.
 
 As of `version 0.1.34`, everything is based off of the 'find me' button. Once you hit that the app will use your device's GPS via the *navigator API* to find your location. 
 
