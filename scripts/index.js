@@ -52,7 +52,7 @@ find.addEventListener('click', function(ev) {
           / Dev event listener to help project points and azimuths
           /
           /***********************************************************/
-          /*
+          
           google.maps.event.addListener(app.map, 'center_changed', function() {
             
             app.currLoc.latitude = app.map.getCenter().lat();
@@ -62,7 +62,7 @@ find.addEventListener('click', function(ev) {
             document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
             app.currMarker.setPosition(app.map.getCenter());
           });
-          */
+          
           
         }
 
@@ -221,27 +221,27 @@ calc.addEventListener('click', function() {
       map : app.map,
       draggable : true
     });
+
+    //
+    // Since finding the center of an irregular polygon using lat/lng is hard,
+    // allow user to drag the circle to make sure that the radius is correct
+    //
+    google.maps.event.addListener(app.azCircle, 'drag', function(ev) {
+      app.azCircle.setCenter(ev.latLng);
+      app.azCenter = ev.latLng;
+      app.azCenterMarker.setPosition(app.azCenter);
+
+      var p = {
+        latitude: app.azCenter.lat(),
+        longitude: app.azCenter.lng()
+      };
+      document.getElementById('triangulateResults').innerHTML = util.convertToDMS(p);
+
+    });
   }
   else {
     app.azCircle.setCenter(app.azCenter);
   }
-
-  //
-  // Since finding the center of an irregular polygon using lat/lng is hard,
-  // allow user to drag the circle to make sure that the radius is correct
-  //
-  google.maps.event.addListener(app.azCircle, 'drag', function(ev) {
-    app.azCircle.setCenter(ev.latLng);
-    app.azCenter = ev.latLng;
-    app.azCenterMarker.setPosition(app.azCenter);
-
-    var p = {
-      latitude: app.azCenter.lat(),
-      longitude: app.azCenter.lng()
-    };
-    document.getElementById('triangulateResults').innerHTML = util.convertToDMS(p);
-
-  });
 
   var p = {
     latitude: app.azCenter.lat(),
@@ -293,7 +293,7 @@ clear.addEventListener('click', function(ev) {
 erase.addEventListener('click', function(ev) {
 
   if (app.markers && app.azLines && app.markers.length !== 0 && app.azLines.length !== 0) {
-    app.markers[app.markers.length - 1].setPosition(null);
+    app.markers[app.markers.length - 1].setMap(null);
     app.azLines[app.azLines.length - 1].setMap(null);
 
     app.markers.splice(app.markers.length - 1);
@@ -307,6 +307,34 @@ erase.addEventListener('click', function(ev) {
 
 
 },false);
+
+//
+// Adds an Info window and handles deleting a marker and azimuth line
+//
+function addMarkerTooltip(markerID, azLineID) {
+  var infoWindow = new google.maps.InfoWindow({
+    content : "<input type='button' id='mark" + markerID + "' class='superButton bad' value='Delete'>"
+  });
+
+  google.maps.event.addListener(app.markers[markerID], 'click', function(ev) {
+    infoWindow.open(app.map, app.markers[markerID]);
+  });
+
+  google.maps.event.addListener(infoWindow, 'domready', function() {
+    console.log('dom ready');
+    document.getElementById('mark' + markerID).addEventListener('click', function(ev) {
+      
+      app.markers[markerID].setMap(null);
+      app.azLines[azLineID].setMap(null);
+
+      app.markers.splice(markerID, 1);
+      app.azLines.splice(azLineID, 1);
+
+      infoWindow.close();
+
+    });
+  })
+}
 
 //
 // Modal input event listener for hawkID
@@ -372,6 +400,7 @@ document.getElementById('modal-azimuth-ok').addEventListener('click', function(e
     //save shapes
     app.markers.push(hawkMarker);
     app.azLines.push(az);
+    addMarkerTooltip(app.markers.length - 1, app.azLines.length - 1);
 
 
     console.log('adding mark', app.markers.length, app.azLines.length);
@@ -390,4 +419,3 @@ document.getElementById('modal-azimuth-ok').addEventListener('click', function(e
 // do a little styling quickly for our map
 cvs.style.width = window.innerWidth + "px";
 cvs.style.height = window.innerHeight * 2/3 + "px";
-//document.getElementById('info-container').style['margin-top'] = window.innerHeight * (2/3) + "px";
