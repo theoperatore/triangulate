@@ -8,6 +8,7 @@ var cvs   = document.getElementById('map-canvas'),
     clear = document.getElementById('clearPoints'),
     calc  = document.getElementById('calcCenter'),
     save  = document.getElementById('saveCalc'),
+    erase = document.getElementById('clearMostRecent'),
     util  = require('./utilities'),
     app   = { currLoc : {} },
     opts  = {
@@ -118,22 +119,8 @@ find.addEventListener('click', function(ev) {
         else {
 
           if (!app.hawkID) {
-
             //show modal
             document.getElementById('modal-hawkID').classList.toggle('hide');
-            document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
-              var id = document.getElementById('modal-hawkID-input').value;
-
-              if (!id || id === '' || id === ' ') {
-                alert('Please enter an ID!');
-              }
-              else {
-                document.getElementById('modal-hawkID').classList.add('hide');
-                app.hawkID = id;
-                document.getElementById('hawkID').innerHTML = app.hawkID;
-
-              }
-            });
           }
             
         }
@@ -161,65 +148,13 @@ find.addEventListener('click', function(ev) {
 // 'Mark' input button to save the current location
 // 
 mark.addEventListener('click', function(ev) {
-  var heading, hawkMarker;
-
   if (!app.map) {
     alert("GAH! GPS yourself first!");
     return;
   }
 
-  // show new mark on map
-  hawkMarker = new google.maps.Marker({
-    icon : {
-      url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
-      optimized : false
-    },
-    position : app.currLatLng,
-    map : app.map
-  });
-
   //show modal
   document.getElementById('modal-azimuth').classList.toggle('hide');
-  document.getElementById('modal-azimuth-ok').addEventListener('click', function(ev) {
-    var azimuth = document.getElementById('modal-azimuth-input').value;
-    heading = parseInt(azimuth, 10);
-
-    if (!heading || !azimuth || azimuth === '' || azimuth === ' ') {
-      alert('Please enter a valid azimuth!');
-    }
-    else {
-      document.getElementById('modal-azimuth').classList.add('hide');
-
-      // use heading to project an azimuth line
-      hawkMarker.__hawkHeadings = util.computeHeadings(app.currLatLng, heading, opts.azDist);
-      
-      // draw azimuth line based on computed headings
-      var az = new google.maps.Polyline(
-        {
-          path : [
-            hawkMarker.__hawkHeadings[0],
-            hawkMarker.__hawkHeadings[1]
-          ],
-          strokeColor: "#00aeff",
-          strokeOpacity: 0.8,
-          strokeWeight: 4,
-          map : app.map
-        }
-      );
-
-      //save shapes
-      app.markers.push(hawkMarker);
-      app.azLines.push(az);
-
-      // save mark
-      util.saveMark(
-        app.hawkID,
-        app.currLoc,
-        heading,
-        hawkMarker.__hawkHeadings
-      );
-    }
-  }, false);
 }, false);
 
 //
@@ -351,6 +286,106 @@ clear.addEventListener('click', function(ev) {
 
   // erase storage
   localStorage.removeItem('points');
+}, false);
+
+//
+// Clears the most recent mark from the screen and local storage
+//
+erase.addEventListener('click', function(ev) {
+
+  if (app.markers && app.azLines && app.markers.length !== 0 && app.azLines.length !== 0) {
+    app.markers[app.markers.length - 1].setPosition(null);
+    app.azLines[app.azLines.length - 1].setMap(null);
+
+    app.markers.splice(app.markers.length - 1);
+    app.azLines.splice(app.azLines.length - 1);
+
+    var tmp = util.loadMarks();
+    tmp.splice(tmp.length - 1);
+
+    util.saveChangedMarks(tmp);
+  }
+
+
+},false);
+
+//
+// Modal input event listener for hawkID
+//
+document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
+  var id = document.getElementById('modal-hawkID-input').value;
+
+  if (!id || id === '' || id === ' ') {
+    alert('Please enter an ID!');
+  }
+  else {
+    document.getElementById('modal-hawkID').classList.add('hide');
+    app.hawkID = id;
+    document.getElementById('hawkID').innerHTML = app.hawkID;
+
+  }
+});
+
+//
+// Modal input event listener for computing a mark
+//
+document.getElementById('modal-azimuth-ok').addEventListener('click', function(ev) {
+
+  // show new mark on map
+  hawkMarker = new google.maps.Marker({
+    icon : {
+      url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
+      optimized : false
+    },
+    position : app.currLatLng,
+    map : app.map
+  });
+
+  ev.stopPropagation();
+  ev.preventDefault();
+
+  var azimuth = document.getElementById('modal-azimuth-input').value;
+  heading = parseInt(azimuth, 10);
+
+  if (!heading || !azimuth || azimuth === '' || azimuth === ' ') {
+    alert('Please enter a valid azimuth!');
+  }
+  else {
+    document.getElementById('modal-azimuth').classList.add('hide');
+
+    // use heading to project an azimuth line
+    hawkMarker.__hawkHeadings = util.computeHeadings(app.currLatLng, heading, opts.azDist);
+    
+    // draw azimuth line based on computed headings
+    var az = new google.maps.Polyline(
+      {
+        path : [
+          hawkMarker.__hawkHeadings[0],
+          hawkMarker.__hawkHeadings[1]
+        ],
+        strokeColor: "#00aeff",
+        strokeOpacity: 0.8,
+        strokeWeight: 4,
+        map : app.map
+      }
+    );
+
+    //save shapes
+    app.markers.push(hawkMarker);
+    app.azLines.push(az);
+
+
+    console.log('adding mark', app.markers.length, app.azLines.length);
+    // save mark
+    util.saveMark(
+      app.hawkID,
+      app.currLoc,
+      heading,
+      hawkMarker.__hawkHeadings
+    );
+
+    return false;
+  }
 }, false);
 
 // do a little styling quickly for our map
@@ -523,9 +558,15 @@ exports.saveMark = function(id, coords, heading, proj) {
     }
   ];
   points.push(out);
-
   localStorage.setItem('points', JSON.stringify(points));
 };
+
+//
+// Saves a properly encoded array. Used when erasing the most recent mark.
+//
+exports.saveChangedMarks = function(marks) {
+  localStorage.setItem('points', JSON.stringify(marks));
+}
 
 //
 // Loads all of the currently saved 'points' data and returns as

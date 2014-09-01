@@ -162,9 +162,15 @@ exports.saveMark = function(id, coords, heading, proj) {
     }
   ];
   points.push(out);
-
   localStorage.setItem('points', JSON.stringify(points));
 };
+
+//
+// Saves a properly encoded array. Used when erasing the most recent mark.
+//
+exports.saveChangedMarks = function(marks) {
+  localStorage.setItem('points', JSON.stringify(marks));
+}
 
 //
 // Loads all of the currently saved 'points' data and returns as
