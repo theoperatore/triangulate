@@ -15,7 +15,7 @@ var cvs   = document.getElementById('map-canvas'),
       azDist : 1609.34
     },
     count = 0,
-    version = "0.1.34";
+    version = "0.1.35";
 
 //
 // returns an ID for makers
@@ -98,7 +98,7 @@ find.addEventListener('click', function(ev) {
           / Dev event listener to help project points and azimuths
           /
           /***********************************************************/
-          /*
+          
           google.maps.event.addListener(app.map, 'center_changed', function() {
             
             app.currLoc.latitude = app.map.getCenter().lat();
@@ -108,7 +108,7 @@ find.addEventListener('click', function(ev) {
             document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
             app.currMarker.setPosition(app.map.getCenter());
           });
-          */
+          
           
         }
 
