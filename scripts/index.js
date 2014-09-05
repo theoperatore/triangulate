@@ -14,7 +14,7 @@ var cvs   = document.getElementById('map-canvas'),
       azDist : 1609.34
     },
     count = 0,
-    version = "0.1.38";
+    version = "0.1.39";
 
 //
 // returns an ID for makers
