@@ -31,10 +31,27 @@
   -moz-appearance: none;
   appearance: none;
 }
+
 .good { background-color: #80C54B; }
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }
 .save { background-color: #70d2ff; }
+
+#settings-toggle {
+  margin: 15px;
+  width: 1.5em;
+}
+#hawkID-display {
+  font-size:1.5em;
+  float:left; 
+  margin:10px;
+}
+#settings { float:right; }
+#title-bar:after {
+  content:"";
+  display:table;
+  clear:both;
+}
 
 #calcCenter { margin-top: 2em;}
 #saveCalc { margin-bottom: 2em; }

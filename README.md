@@ -61,11 +61,11 @@ Once the app is fully functional, this button will most likely be used in conjun
 Planned Updates
 ===============
 
-- Expose settings to user:
+- Expose settings to user (style done):
   - initial map zoom
   - azimuth projection distance (defaults to 1609.34 meters)
   - 'find/watch' location toggle
-- `Mark` button to be replaced by tapping on the map?
+- ~~`Mark` button to be replaced by tapping on the map?~~
 - `Triangulate` button to be replaced by automatic triangulation and detection of adaquate points
 - `Save` and `Reset` buttons to be replaced by tapping in triangulated circle open options.
 - Implement multiple hawk saving

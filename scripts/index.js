@@ -2,12 +2,11 @@
 // Variables for Hawk Triangulation!
 //
 var cvs   = document.getElementById('map-canvas'),
-    mark  = document.getElementById('saveGPS'),
+    //mark  = document.getElementById('saveGPS'),
     find  = document.getElementById('startGPS'),
     clear = document.getElementById('clearPoints'),
     calc  = document.getElementById('calcCenter'),
     save  = document.getElementById('saveCalc'),
-    erase = document.getElementById('clearMostRecent'),
     util  = require('./utilities'),
     app   = { currLoc : {} },
     opts  = {
@@ -15,7 +14,7 @@ var cvs   = document.getElementById('map-canvas'),
       azDist : 1609.34
     },
     count = 0,
-    version = "0.1.35";
+    version = "0.1.37";
 
 //
 // returns an ID for makers
@@ -91,6 +90,15 @@ find.addEventListener('click', function(ev) {
 
           app.map = new google.maps.Map(cvs, { zoom : opts.zoom, center : app.currLatLng });
           app.currMarker = new google.maps.Marker({position: app.currLatLng, map : app.map});
+
+          //
+          // If the user taps on the current Mark, save at that latLng and prompt for az.
+          //
+          google.maps.event.addListener(app.currMarker, 'click', function() {
+
+            document.getElementById('modal-azimuth').classList.toggle('hide');
+
+          });
 
 
           /***********************************************************
@@ -193,6 +201,7 @@ find.addEventListener('click', function(ev) {
 
 }, false);
 
+/*
 //
 // 'Mark' input button to save the current location
 // 
@@ -205,6 +214,8 @@ mark.addEventListener('click', function(ev) {
   //show modal
   document.getElementById('modal-azimuth').classList.toggle('hide');
 }, false);
+*/
+
 
 //
 // Triangulate based off of given azimuths
@@ -312,7 +323,7 @@ calc.addEventListener('click', function() {
 // Saves computed data for exporting
 //
 save.addEventListener('click', function() {
-  alert("I do nothing! However, in the future I will save all calculated data per individual hawk. Hurray!");
+  alert("I do nothing! Hurray!");
 }, false);
 
 //
@@ -342,27 +353,6 @@ clear.addEventListener('click', function(ev) {
 }, false);
 
 //
-// Clears the most recent mark from the screen and local storage
-//
-erase.addEventListener('click', function(ev) {
-
-  if (app.markers && app.azLines && app.markers.length !== 0 && app.azLines.length !== 0) {
-    app.markers[app.markers.length - 1].setMap(null);
-    app.azLines[app.azLines.length - 1].setMap(null);
-
-    app.markers.splice(app.markers.length - 1);
-    app.azLines.splice(app.azLines.length - 1);
-
-    var tmp = util.loadMarks();
-    tmp.splice(tmp.length - 1);
-
-    util.saveChangedMarks(tmp);
-  }
-
-
-},false);
-
-//
 // Modal input event listener for hawkID
 //
 document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
@@ -375,7 +365,7 @@ document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev
     document.getElementById('modal-hawkID').classList.add('hide');
     app.hawkID = id;
     document.getElementById('hawkID').innerHTML = app.hawkID;
-
+    document.getElementById('modal-hawkID-input').value = "";
   }
 });
 
@@ -448,6 +438,7 @@ document.getElementById('modal-azimuth-ok').addEventListener('click', function(e
       hawkMarker.__hawkHeadings
     );
 
+    document.getElementById('modal-azimuth-input').value = "";
     return false;
   }
 }, false);
