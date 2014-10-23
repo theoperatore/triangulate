@@ -7,6 +7,7 @@ var cvs   = document.getElementById('map-canvas'),
     clear = document.getElementById('clearPoints'),
     calc  = document.getElementById('calcCenter'),
     save  = document.getElementById('saveCalc'),
+    settings = document.getElementById('settings-toggle'),
     util  = require('./utilities'),
     app   = { currLoc : {} },
     opts  = {
@@ -39,25 +40,27 @@ function addMarkerTooltip(marker, azLine) {
     console.log('dom ready');
     document.getElementById('mark' + marker.__markerID).addEventListener('click', function(ev) {
       
-      app.markers.forEach(function(mark, i) {
-        if (mark.__markerID === marker.__markerID) {
-          mark.setMap(null);
-          app.markers.splice(i, 1);
-        }
-      });
+      //app.markers.forEach(function(mark, i) {
+      //  if (mark.__markerID === marker.__markerID) {
+      //    mark.setMap(null);
+      //    app.markers.splice(i, 1);
+      //  }
+      //});
 
-      app.azLines.forEach(function(line, i) {
-        if (line.__azLineID === azLine.__azLineID) {
-          line.setMap(null);
-          app.azLines.splice(i, 1);
-        }
-      });
+      //app.azLines.forEach(function(line, i) {
+      //  if (line.__azLineID === azLine.__azLineID) {
+      //    line.setMap(null);
+      //    app.azLines.splice(i, 1);
+      //  }
+      //});
 
+      marker.setMap(null);
+      azLine.setMap(null);
       util.removeMark(marker);
       infoWindow.close();
 
     });
-  })
+  });
 }
 
 //
@@ -443,6 +446,16 @@ document.getElementById('modal-azimuth-ok').addEventListener('click', function(e
   }
 }, false);
 
+//
+// Show / Hide settings
+//
+settings.addEventListener('click', function(ev) {
+  document.getElementById('settings-menu').classList.toggle('hide');
+},false);
+
+
 // do a little styling quickly for our map
 cvs.style.width = window.innerWidth + "px";
 cvs.style.height = window.innerHeight * 2/3 + "px";
+
+document.getElementById('app_version').innerHTML = "app version: " + version;

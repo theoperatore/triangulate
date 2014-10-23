@@ -50,7 +50,7 @@ body {
   float:left; 
   margin:10px;
 }
-#settings { float:right; }
+#settings { float:right; margin-right: 2em; }
 #title-bar:after {
   content:"";
   display:table;

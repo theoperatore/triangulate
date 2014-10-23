@@ -203,7 +203,7 @@ exports.saveChangedMarks = function(marks) {
 exports.loadMarks = function() {
   "use strict";
   var out = localStorage.getItem('points');
-  return (out) ? JSON.parse(out) : [];
+  return ((out) ? JSON.parse(out) : []);
 };
 
 //
