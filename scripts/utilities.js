@@ -106,8 +106,8 @@ exports.computeHeadings = function(origin, azimuth, dist) {
 exports.convertToDMS = function(coords) {
 
   var out = '',
-      lat = coords.latitude,
-      lng = coords.longitude,
+      lat = coords.lat(),
+      lng = coords.lng(),
       degLat, degLng, minLat, minLng, secLat, secLng, dirLat, dirLng;
 
   //latitude - N/S (pos/neg)

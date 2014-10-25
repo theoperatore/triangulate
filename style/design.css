@@ -7,7 +7,6 @@ body {
   font-family:"Helvetica", arial, sans-serif;
 }
 #map-canvas {
-  /*position:fixed !important;*/
   top:0;
   left:0;
 }
@@ -22,11 +21,11 @@ body {
   display:table;
   clear: both;
 }
-.superButton {
+.sBtn {
   color: #fff;
   font-size: 1.5em;
   padding: 5px 20px;
-  margin:10px 20px;
+  margin:10px auto;
   border: 0;
   border-radius: 5pt;
   display:block;
@@ -50,7 +49,10 @@ body {
   float:left; 
   margin:10px;
 }
-#settings { float:right; margin-right: 2em; }
+#settings { float:right; margin-right: 0.5em; }
+#title-bar {
+  height:50px;
+}
 #title-bar:after {
   content:"";
   display:table;
@@ -60,22 +62,26 @@ body {
 #calcCenter { margin-top: 2em;}
 #saveCalc { margin-bottom: 2em; }
 
-#modal-hawkID, #modal-azimuth {
+#modal-hawkid, #modal-azimuth {
   position:fixed;
   text-align: center;
   z-index: 9999;
   width: 100%;
   height:100%;
-  background-color: #000;
-  opacity: 0.8;
+  background-color: rgba(0, 0, 0, 0.55);
 }
-#modal-hawkID div p, #modal-azimuth div p {
+
+#modal-hawkid input[type="button"],
+#modal-azimuth input[type="button"] {
+  margin-left: 10px;
+}
+#modal-hawkid div p, #modal-azimuth div p {
   font-size: 1.05em;
   margin-bottom:1em;
 }
-#modal-hawkID div, #modal-azimuth div {
+#modal-hawkid div, #modal-azimuth div {
   background-color: #fff;
-  margin:3em auto;
+  margin:3em 1em;
   padding: 10px 24px;
   border-radius: 5pt;
   font-size: 1.05em;
@@ -97,8 +103,90 @@ body {
 .modal {
   float:right;
 }
-#modal-hawkID div:after, #modal-azimuth div:after {
+#modal-hawkid div:after, #modal-azimuth div:after {
   content: " ";
   display:table;
   clear:both;
+}
+
+.driver-container {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 48px;
+}
+
+.driver-div {
+  text-align: center;
+  float:left;
+  width: 25%;
+  margin:0px 0px;
+  background-color: rgba(235, 235, 235, 1);
+  font-size: 20px;
+  padding: 10px 0px;
+}
+
+.driver-div:after {
+  content: "";
+  display:table;
+  clear:both;
+}
+
+.left { float:left; }
+.right { float:right; }
+
+.highlight {
+  color: rgba(0, 157, 255, 1);
+}
+
+/* From http://tobiasahlin.com/spinkit/ */
+.spinner {
+  margin: 0 auto;
+  width: 20px;
+  height: 20px;
+  position: relative;
+  display: inline-block;
+}
+
+.cube1, .cube2 {
+  background-color: #333;
+  width: 10px;
+  height: 10px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  
+  -webkit-animation: cubemove 1.8s infinite ease-in-out;
+  animation: cubemove 1.8s infinite ease-in-out;
+}
+
+.cube2 {
+  -webkit-animation-delay: -0.9s;
+  animation-delay: -0.9s;
+}
+
+@-webkit-keyframes cubemove {
+  25% { -webkit-transform: translateX(22px) rotate(-90deg) scale(0.5) }
+  50% { -webkit-transform: translateX(22px) translateY(22px) rotate(-180deg) }
+  75% { -webkit-transform: translateX(0px) translateY(22px) rotate(-270deg) scale(0.5) }
+  100% { -webkit-transform: rotate(-360deg) }
+}
+
+@keyframes cubemove {
+  25% { 
+    transform: translateX(22px) rotate(-90deg) scale(0.5);
+    -webkit-transform: translateX(22px) rotate(-90deg) scale(0.5);
+  } 50% { 
+    transform: translateX(22px) translateY(22px) rotate(-179deg);
+    -webkit-transform: translateX(22px) translateY(22px) rotate(-179deg);
+  } 50.1% { 
+    transform: translateX(22px) translateY(22px) rotate(-180deg);
+    -webkit-transform: translateX(22px) translateY(22px) rotate(-180deg);
+  } 75% { 
+    transform: translateX(0px) translateY(22px) rotate(-270deg) scale(0.5);
+    -webkit-transform: translateX(0px) translateY(22px) rotate(-270deg) scale(0.5);
+  } 100% { 
+    transform: rotate(-360deg);
+    -webkit-transform: rotate(-360deg);
+  }
 }

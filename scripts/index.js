@@ -12,10 +12,10 @@ var cvs   = document.getElementById('map-canvas'),
     app   = { currLoc : {} },
     opts  = {
       zoom   : 14,
-      azDist : 1609.34
+      azDist : 4828.02
     },
     count = 0,
-    version = "0.1.39";
+    version = "0.2.00";
 
 //
 // returns an ID for makers
