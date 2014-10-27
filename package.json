@@ -16,5 +16,8 @@
   "devDependencies": {
     "beefy": "^2.1.1",
     "browserify": "^5.10.1"
+  },
+  "dependencies": {
+    "firebase": "^1.1.2"
   }
 }

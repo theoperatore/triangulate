@@ -3,7 +3,6 @@
   <title>Tri-Hawk-ulate</title>
   
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!--<meta name="apple-mobile-web-app-status-bar-style">-->
   <link rel="apple-touch-startup-image" href="./images/hawk-scream-loading.png">
   <link rel="apple-touch-icon" href="./images/hawk-shortcut.png">
   <link rel="apple-touch-icon-precomposed" href="./images/hawk-shortcut.png">
@@ -27,6 +26,15 @@
     <div class="modal-container">
       <p>Azimuth of hawk?</p>
       <input class='modalInput' type='text' id='modal-azimuth-input' placeholder='azimuth [1-360]'>
+      <p>Signal Strength?</p>
+      <select id="modal-azimuth-signal-input">
+        <option value="null" selected disabled>Strength</option>
+        <option value="0">0%</option>
+        <option value="<25">less than 25%</option>
+        <option value="50">50%</option>
+        <option value=">75">greater than 75%</option>
+        <option value="100">100%</option>
+      </select>
       <input class='sBtn modal good' type='button' id='modal-azimuth-ok' value='Ok'>
       <input class='sBtn modal neutral' type='button' id='modal-azimuth-cancel' value='Cancel'>
     </div>
@@ -39,9 +47,10 @@
         <img src="./images/icon-menu.svg" id="settings-toggle">
         <ul class="hide menu" id="settings-menu">
           <li>Initial Map Zoom <input type='text' size='3'></li>
-          <li>Azimuth Length <input type='range' min='804.66' max="8046.6" step="804.66"</li>
-          <li>Continuous 'Watch' GPS <input type='checkbox' ></li>
-          <li id="app_version"></li>
+          <li>Azimuth Length <input type='range' min='804.672' max="8046.6" step="804.672"</li>
+          <li>Unlock location mark: <input type='checkbox'></li>
+          <li>sessionID: <span id="session_id"></span></li>
+          <li>version: <span id="app_version"></span></li>
         </ul>
       </div>
     </div>
@@ -66,5 +75,5 @@
 
   </div>
 
-  <script type="text/javascript" src='./scripts/bInterface.js?0139'></script>
+  <script type="text/javascript" src='./scripts/bInterface.js?0200'></script>
 </body>

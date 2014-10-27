@@ -23,7 +23,7 @@ body {
 }
 .sBtn {
   color: #fff;
-  font-size: 1.5em;
+  font-size: 1em;
   padding: 5px 20px;
   margin:10px auto;
   border: 0;
@@ -101,12 +101,17 @@ body {
 }
 
 .modal {
-  float:right;
+  display:inline-block;
 }
 #modal-hawkid div:after, #modal-azimuth div:after {
   content: " ";
   display:table;
   clear:both;
+}
+
+select {
+  display:block;
+  margin: 0 auto;
 }
 
 .driver-container {

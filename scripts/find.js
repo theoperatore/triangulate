@@ -1,75 +1,98 @@
 var curr = new google.maps.Marker(),
     info = new google.maps.InfoWindow(),
-    name = document.getElementById('hawkID'),
     spin = document.getElementById('spinner'),
     glyph= document.getElementById('glyph'),
     div  = document.createElement('div'),
     save = document.createElement('button'),
+    modalAzimuth = document.getElementById('modal-azimuth'),
+    modalHawkID = document.getElementById('modal-hawkid'),
+    modalAzimuthInput = document.getElementById('modal-azimuth-input'),
+    modalAzimuthSignal= document.getElementById('modal-azimuth-signal-input'),
+    Firebase = require('firebase'),
+    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks"),
     util = require('./utilities'),
-    map;
+    app;
+
+function onAzimuthOk() {
+  var azStr, az, sig;
+
+  // get azimuth input
+  azStr = modalAzimuthInput.value.trim();
+  az = parseInt(azStr, 10);
+
+  if (isNaN(az) || az === void(0)) {
+    alert('Need a valid Azimuth to Tri-hawk-ulate!');
+    return;
+  }
+
+  // get signal strength
+  sig = modalAzimuthSignal.options[modalAzimuthSignal.selectedIndex].value;
+  if (sig === "null") {
+    alert("Please select a Signal Strength");
+    return;
+  }
+
+  // validate hawkID one more time in case something crazy unexpected happens
+  if (app.hawkID === "") {
+    alert("Oh Snap! Enter a HawkID to track and try saving again.");
+    modalAzimuth.classList.add('hide');
+    modalHawkID.classList.remove('hide');
+    return;
+  }
+
+  // add new mark to app.marks
+  var mark = {};
+  mark.lat = curr.getPosition().lat();
+  mark.lng = curr.getPosition().lng();
+  mark.az  = az;
+  mark.sigStr = sig;
+  mark.date = +new Date;
+  app.marks.push(mark);
+
+  //db.child('hawks').child(pushIDs[id].name()).child('marks').update(mark);
+  db.child(app.sessionID).update(
+    { 
+      "marks" : app.marks,
+      "hawkID": app.hawkID
+    }
+  );
+
+  // close modal
+  modalAzimuthInput.value = "";
+  modalAzimuth.classList.add('hide');
+}
 
 function onSave() { 
   console.log('saving location', curr.getPosition().lat(), curr.getPosition().lng());
-  document.getElementById('modal-azimuth').classList.remove('hide');
-}
-
-function onAzimuthOk() {
-  
-  // get azimuth input
-
-  // save: hawkID { time, location, azimuth }
-
-  // create marker w/ infoWindow delete
-
-  // project azimuth line
-
-  // close modal
-  document.getElementById('modal-azimuth').classList.add('hide');
+  modalAzimuth.classList.remove('hide');
 }
 
 function onAzimuthCancel() {
-  document.getElementById('modal-azimuth').classList.add('hide');
-}
-
-function onHawkIdOk() {
-  
-  // get hawkid input
-  var id = document.getElementById('modal-hawkid-input').value.trim();
-
-  if (id === undefined || id === "") {
-    alert('Please enter a valid hawk ID');
-    return false;
-  }
-
-  // set up hawkID in database
-
-  // set tracking name at top
-  name.innerHTML = id;
-
-  // close modal
-  document.getElementById('modal-hawkid').classList.add('hide');
+  modalAzimuth.classList.add('hide');
 }
 
 // attach modal event listeners
 document.getElementById('modal-azimuth-ok').addEventListener('click', onAzimuthOk, false);
 document.getElementById('modal-azimuth-cancel').addEventListener('click', onAzimuthCancel, false);
-document.getElementById('modal-hawkid-ok').addEventListener('click', onHawkIdOk, false);
+
 
 // find me button
-module.exports = function(btn, m) {
+module.exports = function(btn, m, a, debug) {
   btn.addEventListener('click', function() {
-
-    if (name.innerHTML === "") {
-      document.getElementById('modal-hawkid').classList.remove('hide');
-    }
-
     if (navigator && navigator.geolocation) {
-
-      google.maps.event.clearListeners(curr, "click");
 
       glyph.classList.toggle('hide');
       spin.classList.toggle('hide');
-      map = m;
+      m.setZoom(14);
+
+      app = a;
+
+      if (app.hawkID === "") {
+        document.getElementById('modal-hawkid').classList.remove('hide');
+      }
+
+      google.maps.event.clearListeners(curr, "click");
+      google.maps.event.clearListeners(m, "drag");
 
       // FIND ME!
       navigator.geolocation.getCurrentPosition(
@@ -80,9 +103,9 @@ module.exports = function(btn, m) {
               dms = util.convertToDMS(pos);
 
           curr.setPosition(pos);
-          curr.setMap(map);
+          curr.setMap(m);
 
-          map.setCenter(pos);
+          m.setCenter(pos);
 
           save.classList.add('sBtn');
           save.classList.add('good');
@@ -94,15 +117,44 @@ module.exports = function(btn, m) {
           div.appendChild(save);
 
           info.setContent(div);
-          info.open(map, curr);
+          info.open(m, curr);
 
           // allow info window to be opened again if closed
           google.maps.event.addListener(curr, 'click', function() {
-            info.open(map, curr);
+            info.open(m, curr);
           });
 
+          // close window when dragging the map
+          google.maps.event.addListener(m, 'drag', function() {
+            info.close();
+          })
+
+          // debug/unlock mode
+          if (debug) {
+            google.maps.event.clearListeners(m, 'dragend');
+            google.maps.event.addListener(m, 'dragend', function() {
+              
+            curr.setPosition(m.getCenter());
+            dms = util.convertToDMS(m.getCenter());
+
+            save.classList.add('sBtn');
+            save.classList.add('good');
+            save.innerHTML = "Save";
+            save.removeEventListener('click', onSave, false);
+            save.addEventListener('click', onSave, false);
+
+            div.innerHTML = dms;
+            div.appendChild(save);
+
+            info.setContent(div);
+              
+            });
+          }
+          
+          // let user know GPS is finished
           glyph.classList.toggle('hide');
           spin.classList.toggle('hide');
+            
         },
 
         // error
@@ -121,6 +173,5 @@ module.exports = function(btn, m) {
     else {
       alert("Your browser does not support the GPS function!");
     }
-
   });
 }

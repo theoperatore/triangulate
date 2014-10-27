@@ -1,3 +1,6 @@
+//var Firebase = require('firebase'),
+//    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/");
+
 //
 // Computes the radius of the largest circle that can be drawn inside the
 // polygon created by the azimuths
@@ -6,14 +9,14 @@ exports.computeRadius = function(edges) {
   var area, semiperimeter = 0;
 
   area = google.maps.geometry.spherical.computeArea(edges);
-  for (var i = 0, curr, cp, next, np; i < edges.length; i++) {
+  for (var i = 0, curr, next; i < edges.length; i++) {
     curr = edges[i];
     next = edges[((i+1)%edges.length)];
     semiperimeter += google.maps.geometry.spherical.computeDistanceBetween(curr,next);
   }
 
 
-  return (2*area) / semiperimeter;
+  return (2 * area) / semiperimeter;
 }
 
 //
@@ -119,7 +122,7 @@ exports.convertToDMS = function(coords) {
   degLat = Math.abs(degLat);
   out += degLat + "&deg; " + minLat + "' " + secLat + "\" " + dirLat;
 
-  out += " - ";
+  out += " </br> ";
 
   //longitude E/W (pos/neg)
   degLng = (lng | 0);
@@ -132,103 +135,4 @@ exports.convertToDMS = function(coords) {
 
   return out;
 
-}
-
-//
-// Handles removing a saved marker
-//
-exports.removeMark = function(marker) {
-  "use strick";
-
-  var locals = JSON.parse(localStorage.getItem('points'));
-  locals.forEach(function(local, i) {
-    console.log('searching', local, marker.__markerID);
-    if (local.markerID === marker.__markerID) {
-      console.log('found!');
-      locals.splice(i, 1);
-    }
-  });
-
-  localStorage.setItem('points', JSON.stringify(locals));
-};
-
-//
-// Appends the parameters id, coords, heading, computedOffsets
-// to the localStorage item 'points'.
-//
-// 'points' should only contain the points for locating the current bird
-// and should be cleared every time a new bird is being tracked.
-//
-// 'points' will most likely be deleted when the user saves the computed
-// data for the current bird.
-//
-exports.saveMark = function(markerid, hawkid, coords, heading, proj) {
-  "use strict";
-  var local = localStorage.getItem('points'),
-      points = (local) ? JSON.parse(local) : [],
-      out = {};
-
-  out.coords  = coords;
-  out.heading = heading;
-  out.date = +new Date;
-  out.hawkID = hawkid;
-  out.markerID = markerid;
-  out.computedOffsets = [
-    {
-      latitude : proj[0].lat(),
-      longitude: proj[0].lng()
-    },
-    {
-      latitude : proj[1].lat(),
-      longitude: proj[1].lng()
-    }
-  ];
-  points.push(out);
-  localStorage.setItem('points', JSON.stringify(points));
-};
-
-//
-// Saves a properly encoded array. Used when erasing the most recent mark.
-//
-exports.saveChangedMarks = function(marks) {
-  localStorage.setItem('points', JSON.stringify(marks));
-}
-
-//
-// Loads all of the currently saved 'points' data and returns as
-// an array of objects with latitude and longitude properties.
-//
-// If there isn't a 'points' item then an empty array is returned.
-//
-exports.loadMarks = function() {
-  "use strict";
-  var out = localStorage.getItem('points');
-  return ((out) ? JSON.parse(out) : []);
-};
-
-//
-// Tells the app to save the currently computer triangulation data for the
-// current bird and start tracking a new bird.
-//
-// Information saved here is a collection of all birds tracked by this user,
-// and should be exported as a CSV file for analysis.
-//
-// param: data -
-//  - data.date   : the JS Date time this triangulation was recorded
-//  - data.points : an array containing data for each individual mark
-//  - data.hawkID : the name of the hawk to save
-//  - data.tri    : the triangulated data for this hawk  
-//
-exports.saveComputedData = function(data) {
-  "use strict";
-  //localStorage.setItem('computed', JSON.stringify(data));
-}
-
-//
-// Returns, as an array of objects, all of the saved bird information this
-// user has recorded.
-//
-exports.loadComputedData = function() {
-  "use strict";
-  return JSON.parse(localStorage.getItem('computed')) || [];
 }
