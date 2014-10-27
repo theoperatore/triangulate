@@ -83,7 +83,7 @@ exports.intersects = function(map, lat1,lat2, lat3,lat4) {
 
 //
 // Given an origin LatLng object, a heading, and a distance, returns
-// an array of two calculated points along the direction of the azimuth
+// an array of two calculated LatLng objects along the direction of the azimuth
 //
 exports.computeHeadings = function(origin, azimuth, dist) {
   var positive, negative, dir;
@@ -95,7 +95,7 @@ exports.computeHeadings = function(origin, azimuth, dist) {
   positive = google.maps.geometry.spherical.computeOffset(origin, dist, azimuth);
   negative = google.maps.geometry.spherical.computeOffset(origin, dist, dir);
 
-  return [positive, negative];
+  return [negative, positive];
 }
 
 //

@@ -13,6 +13,7 @@ var curr = new google.maps.Marker(),
     util = require('./utilities'),
     app;
 
+// when a user submits an azimuth
 function onAzimuthOk() {
   var azStr, az, sig;
 
@@ -20,6 +21,7 @@ function onAzimuthOk() {
   azStr = modalAzimuthInput.value.trim();
   az = parseInt(azStr, 10);
 
+  // validate that it's an integer
   if (isNaN(az) || az === void(0)) {
     alert('Need a valid Azimuth to Tri-hawk-ulate!');
     return;
@@ -49,7 +51,7 @@ function onAzimuthOk() {
   mark.date = +new Date;
   app.marks.push(mark);
 
-  //db.child('hawks').child(pushIDs[id].name()).child('marks').update(mark);
+  // save marks
   db.child(app.sessionID).update(
     { 
       "marks" : app.marks,
@@ -107,8 +109,7 @@ module.exports = function(btn, m, a, debug) {
 
           m.setCenter(pos);
 
-          save.classList.add('sBtn');
-          save.classList.add('good');
+          save.classList.add('sBtn', 'good');
           save.innerHTML = "Save";
           save.removeEventListener('click', onSave, false);
           save.addEventListener('click', onSave, false);

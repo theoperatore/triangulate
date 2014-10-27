@@ -4,6 +4,9 @@ var cvs = document.getElementById('map-canvas'),
     btnSave = document.getElementById('saveMe'),
     btnDown = document.getElementById('downloadMe'),
     btnClear= document.getElementById('clearMe'),
+    Firebase = require('firebase'),
+    utils = require('./utilities'),
+    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks"),
     opts = {
       zoom   : 17,
       azDist : 4828.03, // 3 miles in either direction
@@ -17,8 +20,6 @@ var cvs = document.getElementById('map-canvas'),
       }
     ),
     app = {},
-    Firebase = require('firebase'),
-    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks"),
     version = "0.2.00";
 
 // do a little viewport styling for our map/app
@@ -43,7 +44,81 @@ if (app.sessionID === void(0) || isNaN(app.sessionID)) {
   document.getElementById('modal-hawkid').classList.remove('hide');
 }
 
-// set up Firebase listeners
+// firebase listener -- adding a mark to 
+db.child(app.sessionID).child("marks").on('child_added', function(markSnap) {
+  var m = markSnap.val(),
+      btnDel = document.createElement('button'),
+      mark = new google.maps.Marker(),
+      info = new google.maps.InfoWindow(),
+      line,
+      pos,
+      headings;
+
+  // compute az headings from m.lat, m.lng, m.az, and opts.azDist
+  pos = new google.maps.LatLng(m.lat, m.lng);
+  headings = utils.computeHeadings(pos, m.az, opts.azDist);
+
+  // use headings to display polyline
+  line = new google.maps.Polyline({
+    path : headings,
+    strokeColor: "#00aeff",
+    strokeOpacity: 0.8,
+    strokeWeight: 4,
+    map : map
+  });
+
+  // create and display new marker
+  mark.setPosition(pos);
+  mark.setMap(map);
+
+  // set up infoWindow
+  btnDel.classList.add("sBtn", "bad")
+  btnDel.innerHTML = "Delete";
+  info.setContent(btnDel);
+
+  // set up event listener for infoWindow display on marker click
+  google.maps.event.addListener(mark, "click", function() {
+    info.open(map, mark);
+  });
+
+  // set up event listener for deleting mark
+  function deleteMark() {
+
+    for (var i = 0, curr; i < app.marks.length; i++) {
+      curr = app.marks[i];
+
+      if (curr.lat === m.lat && curr.lng === m.lng && curr.az === m.az) {
+        app.marks.splice(i,1);
+        line.setMap(null);
+        mark.setMap(null);
+
+        // if we go bellow 2 marks, remove triangulated data
+        if (app.marks.length <= 2) {
+
+          // remove circle, intersects, center mark
+          app.triCenter = {};
+          app.triDiameter = 0;
+
+        }
+
+        // save new state
+        db.child(app.sessionID).set(
+          { 
+            "marks" : app.marks,
+            "hawkID": app.hawkID,
+            "triDiameter" : 0
+          }
+        );
+
+        break;
+      }
+    }
+  }
+  btnDel.addEventListener('click', deleteMark, false);
+
+  // if app.marks.length >=3 call triangulate function
+
+});
 
 // read initial state of db
 db.once('value',
@@ -102,6 +177,7 @@ function onHawkIdOk() {
   // get hawkid input
   id = document.getElementById('modal-hawkid-input').value.trim();
 
+  // validate
   if (id === (void(0)) || id === "") {
     alert('Please enter a valid hawk ID');
     return false;
