@@ -1,4 +1,6 @@
-module.exports = function(btn, map) {
+var btn = document.getElementById('clearMe');
+
+module.exports = function(app, map, opts) {
 
   btn.addEventListener('click', function() {
 

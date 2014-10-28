@@ -35,6 +35,10 @@ body {
   appearance: none;
 }
 
+.iBtn {
+  margin: 0px auto;
+}
+
 .good { background-color: #80C54B; }
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }

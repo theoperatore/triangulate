@@ -1,115 +1,83 @@
-var curr = new google.maps.Marker(),
-    info = new google.maps.InfoWindow(),
+///////////////////////////////////////////////////////////////////////////////
+//
+// Handles what happens when the user uses the spyglass button to find their
+// current location.
+//
+///////////////////////////////////////////////////////////////////////////////
+var info = new google.maps.InfoWindow(),
     spin = document.getElementById('spinner'),
     glyph= document.getElementById('glyph'),
     div  = document.createElement('div'),
     save = document.createElement('button'),
+    btn = document.getElementById('findMe'),
     modalAzimuth = document.getElementById('modal-azimuth'),
     modalHawkID = document.getElementById('modal-hawkid'),
-    modalAzimuthInput = document.getElementById('modal-azimuth-input'),
-    modalAzimuthSignal= document.getElementById('modal-azimuth-signal-input'),
-    Firebase = require('firebase'),
-    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks"),
-    util = require('./utilities'),
-    app;
+    utils = require('./utilities');
 
-// when a user submits an azimuth
-function onAzimuthOk() {
-  var azStr, az, sig;
+// main export function
+module.exports = function(app, map, debug) {
 
-  // get azimuth input
-  azStr = modalAzimuthInput.value.trim();
-  az = parseInt(azStr, 10);
 
-  // validate that it's an integer
-  if (isNaN(az) || az === void(0)) {
-    alert('Need a valid Azimuth to Tri-hawk-ulate!');
-    return;
+  /****************************************************************************
+  *
+  *  Function to open the azimuth modal when the user tries to save a new mark
+  *
+  ****************************************************************************/
+  function onSave() { 
+    console.log('attempting to save location',
+      app.curr.getPosition().lat(),
+      app.curr.getPosition().lng()
+    );
+    modalAzimuth.classList.remove('hide');
   }
 
-  // get signal strength
-  sig = modalAzimuthSignal.options[modalAzimuthSignal.selectedIndex].value;
-  if (sig === "null") {
-    alert("Please select a Signal Strength");
-    return;
-  }
-
-  // validate hawkID one more time in case something crazy unexpected happens
-  if (app.hawkID === "") {
-    alert("Oh Snap! Enter a HawkID to track and try saving again.");
-    modalAzimuth.classList.add('hide');
-    modalHawkID.classList.remove('hide');
-    return;
-  }
-
-  // add new mark to app.marks
-  var mark = {};
-  mark.lat = curr.getPosition().lat();
-  mark.lng = curr.getPosition().lng();
-  mark.az  = az;
-  mark.sigStr = sig;
-  mark.date = +new Date;
-  app.marks.push(mark);
-
-  // save marks
-  db.child(app.sessionID).update(
-    { 
-      "marks" : app.marks,
-      "hawkID": app.hawkID
-    }
-  );
-
-  // close modal
-  modalAzimuthInput.value = "";
-  modalAzimuth.classList.add('hide');
-}
-
-function onSave() { 
-  console.log('saving location', curr.getPosition().lat(), curr.getPosition().lng());
-  modalAzimuth.classList.remove('hide');
-}
-
-function onAzimuthCancel() {
-  modalAzimuth.classList.add('hide');
-}
-
-// attach modal event listeners
-document.getElementById('modal-azimuth-ok').addEventListener('click', onAzimuthOk, false);
-document.getElementById('modal-azimuth-cancel').addEventListener('click', onAzimuthCancel, false);
-
-
-// find me button
-module.exports = function(btn, m, a, debug) {
+  /****************************************************************************
+  *
+  *  Set up the event listener for the FIND ME spyglass button.
+  *
+  *  Uses the window.navigator and window.navigator.geolocation function to 
+  *  obtain the user's current gps location and sets up a marker at the 
+  *  current location to be added if needed.
+  *
+  ****************************************************************************/
   btn.addEventListener('click', function() {
     if (navigator && navigator.geolocation) {
 
       glyph.classList.toggle('hide');
       spin.classList.toggle('hide');
-      m.setZoom(14);
+      map.setZoom(14);
 
-      app = a;
-
+      // if the hawkId hasn't been set, set it now.
       if (app.hawkID === "") {
-        document.getElementById('modal-hawkid').classList.remove('hide');
+        modalHawkID.classList.remove('hide');
       }
 
-      google.maps.event.clearListeners(curr, "click");
-      google.maps.event.clearListeners(m, "drag");
+      // remove any event listeners before attaching them again.
+      google.maps.event.clearListeners(app.curr, "click");
+      google.maps.event.clearListeners(map, "drag");
 
       // FIND ME!
       navigator.geolocation.getCurrentPosition(
 
-        // success
+        /**********************************************************************
+        *
+        *  Function to handle the successful acquiring of the user's current
+        *  gps location.
+        *
+        **********************************************************************/
         function(loc) {
-          var pos = new google.maps.LatLng(loc.coords.latitude, loc.coords.longitude),
-              dms = util.convertToDMS(pos);
+          var pos = new google.maps.LatLng(
+                loc.coords.latitude,
+                loc.coords.longitude
+              ),
+              dms = utils.convertToDMS(pos);
 
-          curr.setPosition(pos);
-          curr.setMap(m);
+          app.curr.setPosition(pos);
+          app.curr.setMap(map);
 
-          m.setCenter(pos);
+          map.setCenter(pos);
 
-          save.classList.add('sBtn', 'good');
+          save.classList.add('sBtn', 'iBtn', 'good');
           save.innerHTML = "Save";
           save.removeEventListener('click', onSave, false);
           save.addEventListener('click', onSave, false);
@@ -118,25 +86,25 @@ module.exports = function(btn, m, a, debug) {
           div.appendChild(save);
 
           info.setContent(div);
-          info.open(m, curr);
+          info.open(map, app.curr);
 
           // allow info window to be opened again if closed
-          google.maps.event.addListener(curr, 'click', function() {
-            info.open(m, curr);
+          google.maps.event.addListener(app.curr, 'click', function() {
+            info.open(map, app.curr);
           });
 
           // close window when dragging the map
-          google.maps.event.addListener(m, 'drag', function() {
+          google.maps.event.addListener(map, 'drag', function() {
             info.close();
           })
 
           // debug/unlock mode
           if (debug) {
-            google.maps.event.clearListeners(m, 'dragend');
-            google.maps.event.addListener(m, 'dragend', function() {
+            google.maps.event.clearListeners(map, 'dragend');
+            google.maps.event.addListener(map, 'dragend', function() {
               
-            curr.setPosition(m.getCenter());
-            dms = util.convertToDMS(m.getCenter());
+            app.curr.setPosition(map.getCenter());
+            dms = utils.convertToDMS(map.getCenter());
 
             save.classList.add('sBtn');
             save.classList.add('good');
@@ -158,7 +126,12 @@ module.exports = function(btn, m, a, debug) {
             
         },
 
-        // error
+        /**********************************************************************
+        *
+        *  Function to handle if there is an error obtaining the user's current
+        *  gps location.
+        *
+        **********************************************************************/
         function(err) {
           if (console.error) {
             alert("Error, check the console for more info: " + err);
@@ -172,7 +145,7 @@ module.exports = function(btn, m, a, debug) {
         { enableHighAccuracy: true });
     }
     else {
-      alert("Your browser does not support the GPS function!");
+      alert("GAH! Your browser does not support the GPS function!");
     }
   });
 }
