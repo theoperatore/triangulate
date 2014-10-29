@@ -1,8 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Sets up firebase event listeners even though this class doesn't
-// instantiate it's own firebase object--one is passed from the main file:
-// interface.js
+// Sets up firebase event listeners via the instance passed from the
+// main file: interface.js
 //
 ///////////////////////////////////////////////////////////////////////////////
 var utils = require('./utilities');
@@ -12,23 +11,165 @@ module.exports = function(app, db, map, opts) {
 
   /****************************************************************************
   *
+  *  Function to sort marks counter-clockwise for triangulating. Computes the
+  *  slope between app.marks[0] and the two points to compare. 
+  *
+  *  If the slope between the first point and app.marks[0] is positive and the
+  *  slope of the second point and app.marks[0] is negative, the first point
+  *  comes first, and vice verse for the second point.
+  *
+  *  If the slopes between both points and the origin are equal, then the point
+  *  that is closest to app.marks[0] will come first.
+  *
+  *  If the slopes are either both positive or both negative, the point with
+  *  the smallest slope comes first, as that point is more counter-clockwise
+  *  than the larger slope.
+  *
+  ****************************************************************************/
+  function sorting(m1, m2) {
+    var p1, p2, origin, s1, s2;
+
+    // if either of the points is the origin mark, don't sort
+    if (m1 === app.marks[0]) return -1;
+    if (m2 === app.marks[0]) return  1;
+
+    // get Google Maps Point from LatLng objects
+    origin = map.getProjection().fromLatLngToPoint(
+      new google.maps.LatLng(app.marks[0].lat, app.marks[0].lng)
+    );
+    p1 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m1.lat, m1.lng));
+    p2 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m2.lat, m2.lng));
+
+    // find the slopes
+    s1 = (p1.y - origin.y) / (p1.x - origin.x);
+    s2 = (p2.y - origin.y) / (p2.x - origin.x);
+
+    // the closest point gets priority if the points are on the same line
+    if (s1 === s2) {
+      var d1, d2;
+
+      d1 = Math.sqrt(Math.pow(p1.x - origin.x) + Math.pow(p1.y - origin.y));
+      d2 = Math.sqrt(Math.pow(p2.x - origin.x) + Math.pow(p2.y - origin.y));
+
+      return ((d1 < d2) ? -1 : 1);
+    }
+
+    // if either slope is positive, it gets priority
+    if (s1  > 0 && s2 >= 0) return -1;
+    if (s1 <= 0 && s2  > 0) return  1;
+
+    // both slopes have the same sign, the smaller one gets priority.
+    return ((s1 > s2) ? 1 : -1);
+  }
+
+
+  /****************************************************************************
+  *
   *  Function to triangulate based on saved marks.
   *
   ****************************************************************************/
   function triangulate() {
+    var center, radius,
+        triInfo = new google.maps.InfoWindow();
+
     console.log('triangulating...');
-    
-    // find intersects--sort marks?
+
+    // find intersects
+    console.log("sorting", app.marks);
+    app.marks.sort(sorting);
+    console.log("finished sorting", app.marks);
+
+    app.intersects.length = 0;
+    for (var i = 0, pos1, pos2, headings1, headings2, c, n; i < app.marks.length; i++) {
+      c = app.marks[i];
+      n = app.marks[((i + 1) % app.marks.length)];
+
+      pos1 = new google.maps.LatLng(c.lat, c.lng);
+      pos2 = new google.maps.LatLng(n.lat, n.lng);
+      headings1 = utils.computeHeadings(pos1, c.az, opts.azDist);
+      headings2 = utils.computeHeadings(pos2, n.az, opts.azDist);
+
+      app.intersects.push(utils.intersects(
+        map,
+        headings1[0], headings1[1],
+        headings2[0], headings2[1] 
+      ));
+    }
 
     // find center of computed intersects
+    center = utils.computeCenter(map, app.intersects);
 
     // find radius of largest circle inside intersect points
+    radius = utils.computeRadius(app.intersects);
 
     // if this is the first time triangulating, create new objects
+    if (!app.apiPolygon) {
+
+      // intersects bounding area
+      app.apiPolygon = new google.maps.Polygon({
+        paths: app.intersects,
+        strokeColor: "#ff0000",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#70d2ff",
+        fillOpacity: 0.6,
+        map : map
+      });
+
+      // largest inscribed circle in boundig area
+      app.apiCircle = new google.maps.Circle({
+        center : center,
+        radius : radius,
+        strokeColor: "#3600b3",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#6929FF",
+        fillOpactiy: 0.6,
+        map : map,
+        draggable : true
+      });
+
+      // center of circle mark
+      app.apiCMark = new google.maps.Marker({
+        position : center,
+        map : map
+      });
+    }
 
     // else, set existing objects with new data
+    else {
+      app.apiPolygon.setPaths(app.intersects);
+      app.apiCircle.setRadius(radius);
+      app.apiCircle.setCenter(center);
+      app.apiCMark.setPosition(center);
+    }
 
+    // allow dragging of the circle for visual measuring
+    google.maps.event.clearListeners(app.apiCircle, "drag");
+    google.maps.event.addListener(app.apiCircle, "drag", function(ev) {
+      app.apiCircle.setCenter(ev.latLng);
+      app.apiCMark.setPosition(ev.latLng);
+      triInfo.close();
+      triInfo.setContent(utils.convertToDMS(ev.latLng));
+    });
+
+    // set up infowindow
+    triInfo.setContent(utils.convertToDMS(center));
+
+    // add click event to CMark to show diameter and coords?
+    google.maps.event.clearListeners(app.apiCMark, "click");
+    google.maps.event.addListener(app.apiCMark, "click", function() {
+      triInfo.open(map, app.apiCMark);
+    });
+    
     // save important triangulated data to the database
+    db.child(app.sessionID).update({
+      "triDiameter" : 2*radius,
+      "triCenter" : {
+        lat : center.lat(),
+        lng : center.lng()
+      }
+    });
   }
 
   /****************************************************************************
@@ -44,11 +185,12 @@ module.exports = function(app, db, map, opts) {
         btnDel = document.createElement('button'),
         mark = new google.maps.Marker(),
         info = new google.maps.InfoWindow(),
+        added = false,
         line,
         pos,
         headings;
 
-    console.log("adding mark from database:", m);
+    console.log("adding new mark from database:", m, app.marks);
 
     // compute az headings from m.lat, m.lng, m.az, and opts.azDist
     pos = new google.maps.LatLng(m.lat, m.lng);
@@ -82,6 +224,11 @@ module.exports = function(app, db, map, opts) {
       info.open(map, mark);
     });
 
+    // if app.marks.length >=3 call triangulate function
+    if (app.apiMarks.length >= 3) {
+      triangulate();
+    }
+
     /**************************************************************************
     *
     *  Funciton to handle deleting the newly created mark and polyline. This
@@ -107,9 +254,9 @@ module.exports = function(app, db, map, opts) {
 
             // remove circle, intersects, center mark
             app.intersects.length = 0;
-            app.apiPolygon.setMap(null);
-            app.apiCircle.setMap(null);
-            app.apiCMark.setMap(null);
+            if (app.apiPolygon) app.apiPolygon.setMap(null);
+            if (app.apiCircle) app.apiCircle.setMap(null);
+            if (app.apiCMark) app.apiCMark.setMap(null);
             delete app.triCenter;
             delete app.triDiameter;
             delete app.apiPolygon;
@@ -120,6 +267,7 @@ module.exports = function(app, db, map, opts) {
 
           // otherwise, re-calculate based on existing marks
           else {
+            console.log("re-triangulating...");
             triangulate();
           }
 
@@ -150,12 +298,6 @@ module.exports = function(app, db, map, opts) {
       }
     }
     btnDel.addEventListener('click', deleteMark, false);
-
-    // if app.marks.length >=3 call triangulate function
-    if (app.marks.length >= 3) {
-      triangulate();
-    }
-
   });
 
   /****************************************************************************
@@ -182,6 +324,7 @@ module.exports = function(app, db, map, opts) {
           if (parseInt(keys[i],10) === savedSession) {
             curr = snap.val()[keys[i]];
             console.log("found match, using:", curr);
+            console.log("using marks", curr.marks);
 
             // merge app and snap.val()
             if (curr.marks)  app.marks = app.marks.concat(curr.marks);
@@ -200,6 +343,12 @@ module.exports = function(app, db, map, opts) {
                 "triDiameter" : (app.triDiameter || 0)
               }
             );
+            console.log("end mark merge",app.marks);
+
+            // triangulate if more than 3 marks
+            if (app.marks.length >= 3) {
+              triangulate();
+            }
 
             break;
           }

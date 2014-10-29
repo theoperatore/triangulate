@@ -25,7 +25,7 @@ map = new google.maps.Map(
   cvs, 
   { 
     zoom : opts.zoom,
-
+    
     // 4Lakes lat lng!
     center : new google.maps.LatLng(43.042825,-89.292592) 
   }
