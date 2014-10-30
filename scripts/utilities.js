@@ -1,6 +1,3 @@
-//var Firebase = require('firebase'),
-//    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/");
-
 //
 // Computes the radius of the largest circle that can be drawn inside the
 // polygon created by the azimuths

@@ -42,7 +42,10 @@ body {
 .good { background-color: #80C54B; }
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }
-.save { background-color: #70d2ff; }
+.dflt { 
+  font-size:1.25em;
+  background-color: #70d2ff; 
+}
 
 #settings-toggle {
   margin: 15px;
@@ -130,7 +133,7 @@ select {
   float:left;
   width: 25%;
   margin:0px 0px;
-  background-color: rgba(235, 235, 235, 1);
+  /*background-color: rgba(235, 235, 235, 1);*/
   font-size: 20px;
   padding: 10px 0px;
 }
@@ -147,6 +150,41 @@ select {
 .highlight {
   color: rgba(0, 157, 255, 1);
 }
+
+.mode-menu {
+  z-index: 1337;
+  border-radius: 5pt;
+  box-shadow: 0px 0px 5px 2px rgba(171,171,171,1);
+  padding: 10px;
+  position: absolute;
+  right: 3%;
+  bottom: 60px;
+  background-color: rgba(255, 255, 255, 1);
+  border: 1px solid rgba(171,171,171,1);
+}
+
+.mode-menu:before, .mode-menu:after {
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  border: 10px solid transparent;
+}
+.mode-menu:before {
+  z-index: 1337;
+  border-top-color: rgba(171,171,171,1);
+  position: absolute;
+  bottom: -20px;
+  right: 20px;
+}
+.mode-menu:after {
+  z-index: 1338;
+  border-top-color: #fff;
+  position: absolute;
+  bottom: -19px;
+  right: 20px;
+}
+
 
 /* From http://tobiasahlin.com/spinkit/ */
 .spinner {

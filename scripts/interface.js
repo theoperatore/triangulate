@@ -6,6 +6,7 @@
 var cvs = document.getElementById('map-canvas'),
     Firebase = require('firebase'),
     utils = require('./utilities'),
+    dbHandler = require('./database'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
     app = {},
     map,
@@ -25,7 +26,7 @@ map = new google.maps.Map(
   cvs, 
   { 
     zoom : opts.zoom,
-    
+
     // 4Lakes lat lng!
     center : new google.maps.LatLng(43.042825,-89.292592) 
   }
@@ -54,9 +55,9 @@ if (app.sessionID === void(0) || isNaN(app.sessionID)) {
 }
 
 // set up other parts of the app
-require('./database')(app, db, map, opts);
+dbHandler.init(app, db, map, opts);
 require('./modal')(app, db, map, opts);
 require('./find')(app, map, opts.unlocked);
 //require('./save')();
 //require('./down')();
-//require('./clear')();
+require('./clear')(app, map, opts);
