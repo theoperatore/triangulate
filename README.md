@@ -37,15 +37,14 @@ After entering any ID, the next thing to do is use the GPS to find yourself. On 
 **New**: Denoted by a plus sign&mdash;this button will open a menu with some options for different modes the app uses: track new hawk, collaborate, snapshot.
 
 - *Track New Hawk*: resets the app to start tracking a new hawk. You will be able to enter a new HawkID upon using the "find" button again, or when attempting to save a mark.
-- *Collaborate*: a feature that allows multiple users to track the same hawk in real time. **Feature currently disabled**
-- *Snapshot*: this mode allows the user to either enter a sessionID or pick from a list of previous sessionIDs used on the current device to view past data. Note that the user cannot edit any saved data unless they manually select an option in the settings menu. **Feature currently disabled**
+- *Collaborate*: a feature that allows multiple users to track the same hawk in real time.
+- *Snapshot*: this mode allows the user to either enter a sessionID or pick from a list of previous sessionIDs used on the current device to view past data. **Feature currently disabled**
 
 #### Notes on using the "Find" button
 
 The app will return the first available GPS location it can find (which may not be the correct spot you are in) instead of watching for your location. As a result, just hit 'find' a couple of times until you are satisfied that the coordinates are the correct coordinates that match up with any other gps device you have.
 
 *This was done intentionally to help conserve battery life and speed up the responsiveness of the app.*
-
 
 ### Saving a mark
 
@@ -79,7 +78,29 @@ The modes menu will pop up allowing you to hit the button, "Track a new Hawk". T
 
 Before reinitializing however, the app will make one last save to the database just in case something was missed, or something crazy happened. If the save cannot be completed, then the app will abort reinitializing and retain the current information.
 
-### Collaborating with a friend
+### Collaborating
+
+Let's face it, sometimes tracking a hawk by your lonesome is ROUGH BUSINESS. Now with the new collaboration mode, you'll be able to track that hawk with all (max 50 because of Firebase's free account) of your friends!
+
+To Collaborate:
+
+1. Decide amongst yourselves who is going to start/host.
+2. Frome the "NEW" menu, hit 'Collaborate'.
+3. The Host will read his/her sessionID to everyone else.
+4. Everyone else will type in the host's sessionID into the text box
+5. Everyone else will hit 'ok' when they are sure the id is correct.
+6. The host will hit 'Start Collaborating'.
+7. Party Party because you can now track the same hawk all together!
+
+Collaboration mode allows multiple users to add and delete data for the same hawk in real time. 
+
+If Bill and Chet are tracking the same hawk and Bill adds a gps mark, it will also show up on Chet's device too the moment the data gets saved to the database.
+
+If Chet decides that Bill's mark was incorrect, Chet can delete Bill's mark and it will be removed from both devices once the database responds.
+
+To stop collaborating, simply start tracking a new hawk.
+
+If you are in the middle of a session and somone wants to collaborate with you, perfect! Send them your sessionID and hit the "Start Collaboration" button. Your data will instantly appear on their device.
 
 ### Checking your work: Snapshot Mode
 

@@ -40,6 +40,11 @@ module.exports = function(app, db, map, opts) {
     app.hawkID = id;
     document.getElementById('hawkID').innerHTML = id;
 
+    // save hawkID to database
+    db.child(app.sessionID).update({
+      "hawkID" : app.hawkID
+    })
+
     // close modal
     modalHawkIDInput.value = "";
     modalHawkID.classList.add('hide');
