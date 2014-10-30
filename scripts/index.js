@@ -60,4 +60,4 @@ require('./modal')(app, db, map, opts);
 require('./find')(app, map, opts.unlocked);
 //require('./save')();
 //require('./down')();
-require('./clear')(app, map, opts);
+require('./mode')(app, map, opts);

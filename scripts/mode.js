@@ -75,11 +75,6 @@ module.exports = function(app, map, opts) {
     delete app.apiCircle;
     delete app.apiCMark;
 
-
-    //TODO: apparently, Firebase doesn't like to handle dynamic listen events. reseting the sessionID
-    //      here doesn't fire the read updates...
-
-
     // get and save new sessionID
     var oldID = app.sessionID;
     app.sessionID = +new Date;
