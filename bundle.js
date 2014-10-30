@@ -460,11 +460,11 @@ function triangulate() {
     app.apiCircle.setCenter(ev.latLng);
     app.apiCMark.setPosition(ev.latLng);
     triInfo.close();
-    triInfo.setContent(utils.convertToDMS(ev.latLng));
+    triInfo.setContent(utils.convertToDMS(ev.latLng) + "</br>" + (2*radius) + " meters");
   });
 
   // set up infowindow
-  triInfo.setContent(utils.convertToDMS(center));
+  triInfo.setContent(utils.convertToDMS(center) + "</br>" + (2*radius) + " meters");
 
   // add click event to CMark to show diameter and coords?
   google.maps.event.clearListeners(app.apiCMark, "click");
