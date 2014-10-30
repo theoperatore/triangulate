@@ -25,7 +25,9 @@ var btn = document.getElementById('clearMe'),
     mmenu = document.getElementById('mode-menu'),
     nmode = document.getElementById('nmode'),
     cmode = document.getElementById('cmode'),
-    smode = document.getElementById('smode');
+    smode = document.getElementById('smode'),
+    modalCollaborate = document.getElementById('modal-collaborate')
+    collaborateID = document.getElementById('collaborate-sessionid');
 
 module.exports = function(app, map, opts) {
 
@@ -81,6 +83,11 @@ module.exports = function(app, map, opts) {
     localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
     console.log("saved new sessionID upon clear", app.sessionID);
 
+    // save old session ID for snapshot mode
+    var pastIDs = JSON.parse(localStorage.getItem("tri-hawk-ulate__pastIDs")) || [];
+    pastIDs.push(oldID);
+    localStorage.setItem("tri-hawk-ulate__pastIDs", JSON.stringify(pastIDs));
+
     // reset database reads
     require('./database').setRead(oldID, app);
 
@@ -90,8 +97,20 @@ module.exports = function(app, map, opts) {
 
     // close mode menu
     mmenu.classList.add('hide');
-  });
+  }, false);
 
+  /****************************************************************************
+  *
+  *  Event listener for inititating collaboration mode. Opens collaboration
+  *  modal to enter a sessionID.
+  *
+  ****************************************************************************/  
+  cmode.addEventListener("click", function() {
+    console.log("collaboration mode");
+    collaborateID.innerHTML = app.sessionID;
+    modalCollaborate.classList.toggle('hide');
+    mmenu.classList.add("hide");
+  }, false);
 
   /****************************************************************************
   *
@@ -101,5 +120,5 @@ module.exports = function(app, map, opts) {
   ****************************************************************************/
   btn.addEventListener('click', function() {
     mmenu.classList.toggle("hide");
-  });
+  }, false);
 }

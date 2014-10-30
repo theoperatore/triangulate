@@ -214,6 +214,17 @@ function update(markSnap) {
   app.apiLines.push(line);
   app.apiInfos.push(info);
 
+  // if app.marks doesn't have this mark, add it
+  console.log("checking for duplicates...");
+  for (var i = 0, c; i < app.marks.length; i++) {
+    c = app.marks[i];
+    if (c.date == m.date) {
+      added = true;
+    }
+  }
+  console.log("duplicates found?", added);
+  if (!added) app.marks.push(m);
+
   // set up infoWindow
   btnDel.classList.add("sBtn", "iBtn" , "bad")
   btnDel.innerHTML = "Delete";
@@ -225,7 +236,7 @@ function update(markSnap) {
   });
 
   // if app.marks.length >=3 call triangulate function
-  if (app.apiMarks.length >= 3) {
+  if (app.marks.length >= 3 && app.apiMarks.length >= 3) {
     triangulate();
   }
 
@@ -272,7 +283,6 @@ function update(markSnap) {
         }
 
         // save new state
-        console.log("using sessionID", app.sessionID);
         db.child(app.sessionID).set(
           { 
             "marks" : app.marks,
@@ -301,6 +311,99 @@ function update(markSnap) {
   btnDel.addEventListener('click', deleteMark, false);
 }
 
+/****************************************************************************
+*
+*  Function to set the hawkID when it changes from the database
+*
+****************************************************************************/
+function updateHawkID(snap) {
+  if (snap.val()) {
+    app.hawkID = snap.val();
+    document.getElementById('hawkID').innerHTML = app.hawkID;
+  }
+}
+
+/****************************************************************************
+*
+*  Collaboration function to be called when a collaborator deletes a mark.
+*
+*  This will delete the mark remotely. Delete closure function will delete
+*  the mark locally.
+*
+****************************************************************************/
+function collabDelete(snap) {
+  console.log("running collab delete");
+  var m = snap.val();
+
+  // find mark to delete in the list of saved marks
+  for (var i = 0, curr; i < app.marks.length; i++) {
+    curr = app.marks[i];
+
+    if (curr.lat === m.lat && curr.lng === m.lng && curr.az === m.az) {
+      app.marks.splice(i,1);
+
+      // if we go bellow 2 marks, remove triangulated data
+      if (app.marks.length <= 2) {
+
+        // remove circle, intersects, center mark
+        app.intersects.length = 0;
+        if (app.apiPolygon) app.apiPolygon.setMap(null);
+        if (app.apiCircle) app.apiCircle.setMap(null);
+        if (app.apiCMark) app.apiCMark.setMap(null);
+        delete app.triCenter;
+        delete app.triDiameter;
+        delete app.apiPolygon;
+        delete app.apiCircle;
+        delete app.apiCMark;
+
+      }
+
+      // otherwise, re-calculate based on existing marks
+      else {
+        console.log("re-triangulating...");
+        triangulate();
+      }
+
+      // save new state
+      db.child(app.sessionID).set(
+        { 
+          "marks" : app.marks,
+          "hawkID": app.hawkID,
+          "triCenter" : (app.triCenter || {}),
+          "triDiameter" : (app.triDiameter || 0)
+        }
+      );
+
+      break;
+    }
+  }
+
+  // find mark to delete in list of apiMarkers
+  for (var i = 0, curr; i < app.apiMarks.length; i++) {
+    curr = app.apiMarks[i];
+
+    if (curr.getPosition().lat() === m.lat && curr.getPosition().lng() === m.lng) {
+      var mark, line, info;
+
+      console.log("found mark to delete", app.apiMarks[i]);
+
+      mark = app.apiMarks[i];
+      line = app.apiLines[i];
+      info = app.apiInfos[i];
+
+      app.apiMarks.splice(i,1);
+      app.apiLines.splice(i,1);
+      app.apiInfos.splice(i,1);
+
+      mark.setMap(null);
+      line.setMap(null);
+      mark = null;
+      line = null;
+      info = null;
+      break;
+    }
+  }
+}
 
 /****************************************************************************
 *
@@ -311,9 +414,26 @@ function update(markSnap) {
 exports.setRead = function(old, a) {
   app = a;
   db.child(old).child('marks').off("child_added", update);
+  db.child(old).child("marks").off("child_removed", collabDelete);
   db.child(app.sessionID).child('marks').on("child_added", update);
 };
 
+/****************************************************************************
+*
+*  Clears, then sets the "child_added" read function again. Primarily used
+*  for collaboration mode
+*
+****************************************************************************/
+exports.setCollaboration = function(old, a) {
+  app = a;
+
+  db.child(app.sessionID).child("hawkID").once("value", updateHawkID);
+  db.child(old).child('marks').off("child_added", update);
+  db.child(old).child("marks").off("child_removed", collabDelete);
+  db.child(app.sessionID).child("marks").on("child_added", update);
+  db.child(app.sessionID).child("marks").on("child_removed", collabDelete);
+
+}
 
 /****************************************************************************
 *
@@ -332,77 +452,9 @@ exports.init = function(a, d, m, o) {
   *  InfoWindow, and Polyline to the map.
   *
   *  If there are 3 or more marks saved, triangulate the hawk and save result.
-  *
+  *  
+  *  Also reads the hawkID from the database once too.
   ****************************************************************************/
   db.child(app.sessionID).child("marks").on('child_added', update);
-
-  /****************************************************************************
-  *
-  *  Firebase event to read initial state of the database once to look for
-  *  saved data for the current sessionID. 
-  *  
-  *  If there isn't any saved data, the user must be starting a new session,
-  *  so the sessionID is saved to localStorage. 
-  *
-  ****************************************************************************/
-  db.once('value', function(snap) {
-
-      // first try to get any saved sessions    
-      var savedSession = parseInt(localStorage.getItem("tri-hawk-ulate__sessionID"), 10),
-          keys;
-
-      // if we have a saved session AND a response from Firebase
-      // merge the app obj with snap.val()
-      if (savedSession && !isNaN(savedSession) && snap.val()) {
-        keys = Object.keys(snap.val());
-
-        for (var i = keys.length-1, curr; i >= 0; i--) {
-          if (parseInt(keys[i],10) === savedSession) {
-            curr = snap.val()[keys[i]];
-            console.log("found match, using:", curr);
-            console.log("using marks", curr.marks);
-
-            // merge app and snap.val()
-            if (curr.marks)  app.marks = app.marks.concat(curr.marks);
-            if (curr.hawkID) app.hawkID = curr.hawkID;
-            if (curr.triCenter) app.triCenter = curr.triCenter;
-            if (curr.triDiameter) app.triDiameter = curr.triDiameter;
-
-            document.getElementById('hawkID').innerHTML = app.hawkID;
-
-            // save app obj
-            db.child(app.sessionID).update(
-              { 
-                "marks" : app.marks,
-                "hawkID": app.hawkID,
-                "triCenter" : (app.triCenter || {}),
-                "triDiameter" : (app.triDiameter || 0)
-              }
-            );
-            console.log("end mark merge",app.marks);
-
-            // triangulate if more than 3 marks
-            if (app.marks.length >= 3) {
-              triangulate();
-            }
-
-            break;
-          }
-        }
-      }
-
-      // if we don't have a saved session, create a new session
-      else {
-        console.log('saving new sessionID', app.sessionID);
-        localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
-      }
-    },
-
-    // error with data read from firebase
-    function(err) {
-      alert("Blabba-doo! Error reading initial state! Hit the 'Track New Hawk' button on the bottom right to start tracking a new hawky and hopefully fix this error...");
-      console.error("Error reading initial state",err.code);
-    }
-  );
-
+  db.child(app.sessionID).child("hawkID").once("value", updateHawkID);
 }

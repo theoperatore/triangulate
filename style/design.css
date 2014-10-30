@@ -69,7 +69,7 @@ body {
 #calcCenter { margin-top: 2em;}
 #saveCalc { margin-bottom: 2em; }
 
-#modal-hawkid, #modal-azimuth {
+.modal {
   position:fixed;
   text-align: center;
   z-index: 9999;
@@ -78,15 +78,14 @@ body {
   background-color: rgba(0, 0, 0, 0.55);
 }
 
-#modal-hawkid input[type="button"],
-#modal-azimuth input[type="button"] {
+.modal input[type="button"] {
   margin-left: 10px;
 }
-#modal-hawkid div p, #modal-azimuth div p {
+.modal div p {
   font-size: 1.05em;
   margin-bottom:1em;
 }
-#modal-hawkid div, #modal-azimuth div {
+.modal div {
   background-color: #fff;
   margin:3em 1em;
   padding: 10px 24px;
@@ -107,10 +106,11 @@ body {
   appearance: none;
 }
 
-.modal {
+.mInput {
   display:inline-block;
 }
-#modal-hawkid div:after, #modal-azimuth div:after {
+
+.modal div:after {
   content: " ";
   display:table;
   clear:both;

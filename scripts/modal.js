@@ -5,9 +5,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 var modalHawkID = document.getElementById('modal-hawkid'),
     modalAzimuth = document.getElementById('modal-azimuth'),
+    modalCollab = document.getElementById('modal-collaborate'),
     modalHawkIDInput = document.getElementById('modal-hawkid-input'),
     modalAzimuthInput = document.getElementById('modal-azimuth-input'),
-    modalAzimuthSignal = document.getElementById('modal-azimuth-signal-input');
+    modalAzimuthSignal = document.getElementById('modal-azimuth-signal-input'),
+    modalCollabInput = document.getElementById('modal-collaborate-input'),
+    dbHandler = require('./database');
 
 module.exports = function(app, db, map, opts) {
 
@@ -111,8 +114,95 @@ module.exports = function(app, db, map, opts) {
     modalAzimuth.classList.add('hide');
   }
 
+  /****************************************************************************
+  *
+  *  Function for handling the set up of collaboration mode.
+  *
+  ****************************************************************************/
+  function onCollabOk() {
+    var collaborateID;
+    
+    console.log("trying collaborate sessionID", modalCollabInput.value)
+    collaborateID = parseInt(modalCollabInput.value);
+    if (isNaN(collaborateID) || collaborateID === void(0)) {
+      alert("Bummer! Please enter a valid sessionID number");
+      return;
+    }
+
+    // erase saved Markers
+    app.apiMarks.forEach(function(m) {
+      m.setMap(null);
+      m = null;
+    });
+
+    // erase saved Polylines
+    app.apiLines.forEach(function(l) {
+      l.setMap(null);
+      l = null;
+    });
+
+    // erase saved InfoWindows
+    app.apiInfos.forEach(function(i) {
+      i = null;
+    });
+
+    // delete and reinitialize properties
+    app.hawkID = "";
+    app.marks.length = 0;
+    app.intersects.length = 0;
+    app.apiMarks.length = 0;
+    app.apiLines.length = 0;
+    app.apiInfos.length = 0;
+    if (app.apiPolygon) app.apiPolygon.setMap(null);
+    if (app.apiCircle) app.apiCircle.setMap(null);
+    if (app.apiCMark) app.apiCMark.setMap(null);
+    delete app.triCenter;
+    delete app.triDiameter;
+    delete app.apiPolygon;
+    delete app.apiCircle;
+    delete app.apiCMark;
+
+    // get and save new sessionID
+    var oldID = app.sessionID;
+    app.sessionID = collaborateID;
+    localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
+    console.log("saved new sessionID on collaborate", app.sessionID);
+
+    // save old session ID for snapshot mode
+    var pastIDs = JSON.parse(localStorage.getItem("tri-hawk-ulate__pastIDs")) || [];
+    pastIDs.push(oldID);
+    localStorage.setItem("tri-hawk-ulate__pastIDs", JSON.stringify(pastIDs));
+    console.log("saved old sessionID on collaborate", oldID);
+
+    dbHandler.setCollaboration(oldID, app);
+    modalCollab.classList.add('hide');
+  }
+
+  /****************************************************************************
+  *
+  *  Function for to tell the app that you are collaborating with another user
+  *  and the app should listen for mark delete events.
+  *
+  ****************************************************************************/
+  function onCollabStart() {
+    dbHandler.setCollaboration(app.sessionID, app);
+    modalCollab.classList.add('hide'); 
+  }
+
+  /****************************************************************************
+  *
+  *  Function for handling the cancel button on the Collaboration Modal.
+  *
+  ****************************************************************************/
+  function onCollabCancel() {
+    modalCollab.classList.add('hide');
+  }
+
   // attach modal event listeners to their repsective buttons
   document.getElementById('modal-hawkid-ok').addEventListener('click', onHawkIdOk, false);
   document.getElementById('modal-azimuth-ok').addEventListener('click', onAzimuthOk, false);
   document.getElementById('modal-azimuth-cancel').addEventListener('click', onAzimuthCancel, false);
+  document.getElementById('modal-collaborate-ok').addEventListener('click', onCollabOk, false);
+  document.getElementById('modal-collaborate-start').addEventListener('click', onCollabStart, false);
+  document.getElementById('modal-collaborate-cancel').addEventListener('click', onCollabCancel, false);
 }

@@ -50,7 +50,8 @@ app.intersects = [];
 // check for a valid sessionID, if not found create a new one.
 if (app.sessionID === void(0) || isNaN(app.sessionID)) {
   app.sessionID = +new Date;
-  console.log("new session", app.sessionID);
+  console.log("saving new session", app.sessionID);
+  localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
   document.getElementById('modal-hawkid').classList.remove('hide');
 }
 
