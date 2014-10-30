@@ -1,461 +1,63 @@
+///////////////////////////////////////////////////////////////////////////////
 //
-// Variables for Hawk Triangulation!
+// Main module for app. Requires all other modules.
 //
-var cvs   = document.getElementById('map-canvas'),
-    //mark  = document.getElementById('saveGPS'),
-    find  = document.getElementById('startGPS'),
-    clear = document.getElementById('clearPoints'),
-    calc  = document.getElementById('calcCenter'),
-    save  = document.getElementById('saveCalc'),
-    settings = document.getElementById('settings-toggle'),
-    util  = require('./utilities'),
-    app   = { currLoc : {} },
-    opts  = {
-      zoom   : 14,
-      azDist : 4828.02
+///////////////////////////////////////////////////////////////////////////////
+var cvs = document.getElementById('map-canvas'),
+    Firebase = require('firebase'),
+    utils = require('./utilities'),
+    dbHandler = require('./database'),
+    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
+    app = {},
+    map,
+    opts = {
+      zoom   : 17,
+      azDist : 4828.03, // 3 miles in either direction
+      unlocked : true
     },
-    count = 0,
     version = "0.2.00";
 
-//
-// returns an ID for makers
-//
-function nextID() {
-  return ++count;
-}
-
-//
-// Adds an Info window and handles deleting a marker and azimuth line
-//
-function addMarkerTooltip(marker, azLine) {
-  var infoWindow = new google.maps.InfoWindow({
-    content : "<input type='button' id='mark" + marker.__markerID + "' class='superButton bad' value='Delete'>"
-  });
-
-  google.maps.event.addListener(marker, 'click', function(ev) {
-    infoWindow.open(app.map, marker);
-  });
-
-  google.maps.event.addListener(infoWindow, 'domready', function() {
-    console.log('dom ready');
-    document.getElementById('mark' + marker.__markerID).addEventListener('click', function(ev) {
-      
-      //app.markers.forEach(function(mark, i) {
-      //  if (mark.__markerID === marker.__markerID) {
-      //    mark.setMap(null);
-      //    app.markers.splice(i, 1);
-      //  }
-      //});
-
-      //app.azLines.forEach(function(line, i) {
-      //  if (line.__azLineID === azLine.__azLineID) {
-      //    line.setMap(null);
-      //    app.azLines.splice(i, 1);
-      //  }
-      //});
-
-      marker.setMap(null);
-      azLine.setMap(null);
-      util.removeMark(marker);
-      infoWindow.close();
-
-    });
-  });
-}
-
-//
-// 'Find Me' input button
-//
-find.addEventListener('click', function(ev) {
-  if (!app.map) cvs.innerHTML = "fetching location...";
-  if (navigator && navigator.geolocation) {
-    
-    document.getElementById('coords').innerHTML = "updating...";
-    navigator.geolocation.getCurrentPosition(
-      
-      // success
-      function(loc) {
-        console.log(loc.coords.latitude, loc.coords.longitude, loc.coords.accuracy, loc);
-
-        // keep track of the found high precision points and LatLng object
-        app.currLoc.latitude  = loc.coords.latitude;
-        app.currLoc.longitude = loc.coords.longitude;
-        app.currLatLng = new google.maps.LatLng(loc.coords.latitude, loc.coords.longitude);
-
-        // set up app object
-        (app.markers)    ? app.markers.length = 0 : app.markers = [];
-        (app.azLines)    ? app.azLines.length = 0 : app.azLines = [];
-        (app.intersects) ? app.intersects.length = 0 : app.intersects = [];
-
-
-        // create map if first time calling 'find me'
-        if (!app.map) {
-
-          app.map = new google.maps.Map(cvs, { zoom : opts.zoom, center : app.currLatLng });
-          app.currMarker = new google.maps.Marker({position: app.currLatLng, map : app.map});
-
-          //
-          // If the user taps on the current Mark, save at that latLng and prompt for az.
-          //
-          google.maps.event.addListener(app.currMarker, 'click', function() {
-
-            document.getElementById('modal-azimuth').classList.toggle('hide');
-
-          });
-
-
-          /***********************************************************
-          /  
-          / Dev event listener to help project points and azimuths
-          /
-          /***********************************************************/
-          
-          google.maps.event.addListener(app.map, 'center_changed', function() {
-            
-            app.currLoc.latitude = app.map.getCenter().lat();
-            app.currLoc.longitude = app.map.getCenter().lng();
-            app.currLatLng = new google.maps.LatLng(app.currLoc.latitude, app.currLoc.longitude);
-
-            document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
-            app.currMarker.setPosition(app.map.getCenter());
-          });
-          
-          
-        }
-
-        // ... otherwise just set the new centers
-        else {
-
-          app.map.setCenter(app.currLatLng);
-          app.currMarker.setPosition(app.currLatLng);
-
-        }
-
-        // set up app tracking by loading marks and ID
-        var loadedMarks = util.loadMarks();
-        if (loadedMarks.length != 0) {
-          loadedMarks.forEach(function(mark) {
-            
-            var m = new google.maps.Marker({
-              icon : {
-                url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
-                optimized : false
-              },
-              position: new google.maps.LatLng(mark.coords.latitude, mark.coords.longitude),
-              map : app.map
-            });
-            m.__hawkHeadings = [
-              new google.maps.LatLng(mark.computedOffsets[0].latitude, mark.computedOffsets[0].longitude),
-              new google.maps.LatLng(mark.computedOffsets[1].latitude, mark.computedOffsets[1].longitude)
-            ];
-
-            
-            // draw azimuth projections
-            var az = new google.maps.Polyline(
-              {
-                path : [
-                  m.__hawkHeadings[0],
-                  m.__hawkHeadings[1]
-                ],
-                strokeColor: "#00aeff",
-                strokeOpacity: 0.8,
-                strokeWeight: 4,
-                map : app.map
-              }
-            );
-
-            m.__markerID  = mark.markerID;
-            az.__azLineID = mark.markerID;
-            count = Math.max(count, mark.markerID);
-            app.markers.push(m);
-            app.azLines.push(az);
-            addMarkerTooltip(m, az);
-
-          });
-
-          //set the id of the hawk
-          app.hawkID = loadedMarks[0].hawkID;
-        }
-        else {
-
-          if (!app.hawkID) {
-            //show modal
-            document.getElementById('modal-hawkID').classList.toggle('hide');
-          }
-            
-        }
-
-        // tell the user where they are and which hawk they are tracking
-        document.getElementById('coords').innerHTML = util.convertToDMS(app.currLoc);
-        document.getElementById('hawkID').innerHTML = app.hawkID;
-      },
-
-      // error
-      function(error) {
-        console.log(error);
-        cvs.innerHTML = "Error obtaining GPS location from network: " + error.message;
-      },
-      {enableHighAccuracy: true}
-    ); // end navigator
-  }
-  else {
-    cvs.innerHTML = "GAH! Geolocation is not supported on this browser. :(";
-  }
-
-}, false);
-
-/*
-//
-// 'Mark' input button to save the current location
-// 
-mark.addEventListener('click', function(ev) {
-  if (!app.map) {
-    alert("GAH! GPS yourself first!");
-    return;
-  }
-
-  //show modal
-  document.getElementById('modal-azimuth').classList.toggle('hide');
-}, false);
-*/
-
-
-//
-// Triangulate based off of given azimuths
-//
-calc.addEventListener('click', function() {
-
-  if (app.markers.length < 3) {
-    alert("Must have 3 or more points to find " + app.hawkID + "!");
-    return;
-  }
-
-  
-  // Erase all current triangulation data first
-
-
-  for (var i = 0, curr, next; i < app.markers.length; i++) {
-    curr = app.markers[i];
-    next = app.markers[((i + 1) % app.markers.length)];
-
-    var intersect = util.intersects(
-      app.map,
-      curr.__hawkHeadings[0], curr.__hawkHeadings[1],
-      next.__hawkHeadings[0], next.__hawkHeadings[1]
-    );
-
-    app.intersects.push(intersect);
-  }
-
-  // mark intersects with a polygon
-  if (!app.azPoly) {
-    app.azPoly = new google.maps.Polygon({
-      paths: app.intersects,
-      strokeColor: "#ff0000",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#70d2ff",
-      fillOpacity: 0.6,
-      map : app.map
-    });
-  }
-  else {
-    app.azPoly.setPaths(app.intersects);
-  }
-
-  // find center of triangulated area
-  app.azCenter = util.computeCenter(app.map, app.intersects);
-  if (!app.azCenterMarker) {
-    app.azCenterMarker = new google.maps.Marker({
-      position : app.azCenter,
-      map : app.map
-    });
-  }
-  else {
-    app.azCenterMarker.setPosition(app.azCenter);
-  }
-
-  // inscribe the largest circle inside the polygon
-  app.azRadius = util.computeRadius(app.intersects);
-  if (!app.azCircle) {
-    app.azCircle = new google.maps.Circle({
-      center : app.azCenter,
-      radius : app.azRadius,
-      strokeColor: "#3600b3",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#6929FF",
-      fillOpactiy: 0.6,
-      map : app.map,
-      draggable : true
-    });
-
-    //
-    // Since finding the center of an irregular polygon using lat/lng is hard,
-    // allow user to drag the circle to make sure that the radius is correct
-    //
-    google.maps.event.addListener(app.azCircle, 'drag', function(ev) {
-      app.azCircle.setCenter(ev.latLng);
-      app.azCenter = ev.latLng;
-      app.azCenterMarker.setPosition(app.azCenter);
-
-      var p = {
-        latitude: app.azCenter.lat(),
-        longitude: app.azCenter.lng()
-      };
-      document.getElementById('triangulateResults').innerHTML = util.convertToDMS(p);
-
-    });
-  }
-  else {
-    app.azCircle.setCenter(app.azCenter);
-  }
-
-  var p = {
-    latitude: app.azCenter.lat(),
-    longitude: app.azCenter.lng()
-  };
-  document.getElementById('triangulateResults').innerHTML = util.convertToDMS(p);
-  document.getElementById('circleDiameter').innerHTML = 2*app.azRadius + " Meters";
-
-}, false);
-
-  
-
-//
-// Saves computed data for exporting
-//
-save.addEventListener('click', function() {
-  alert("I do nothing! Hurray!");
-}, false);
-
-//
-// Removes all drawings from the map, and basically resets all hawk vars
-//
-clear.addEventListener('click', function(ev) {
-  
-  // remove markers and azimuth lines
-  if (app.markers) app.markers.forEach(function(mark) { mark.setMap(null); });
-  if (app.azLines) app.azLines.forEach(function(line) { line.setMap(null); });
-
-  // remove triangulated shapes
-  if (app.azCircle) app.azCircle.setMap(null);
-  if (app.azCenterMarker) app.azCenterMarker.setMap(null);
-  if (app.azPoly) app.azPoly.setMap(null);
-
-  // remove hawkID
-  app.hawkID = null;
-
-  // reset text display
-  document.getElementById('triangulateResults').innerHTML = "";
-  document.getElementById('circleDiameter').innerHTML = "";
-  document.getElementById('hawkID').innerHTML = "";
-
-  // erase storage
-  localStorage.removeItem('points');
-}, false);
-
-//
-// Modal input event listener for hawkID
-//
-document.getElementById('modal-hawkID-ok').addEventListener('click', function(ev) {
-  var id = document.getElementById('modal-hawkID-input').value;
-
-  if (!id || id === '' || id === ' ') {
-    alert('Please enter an ID!');
-  }
-  else {
-    document.getElementById('modal-hawkID').classList.add('hide');
-    app.hawkID = id;
-    document.getElementById('hawkID').innerHTML = app.hawkID;
-    document.getElementById('modal-hawkID-input').value = "";
-  }
-});
-
-//
-// Modal input event listener for canceling
-//
-document.getElementById('modal-azimuth-cancel').addEventListener('click', function() {
-  document.getElementById('modal-azimuth').classList.add('hide');
-}, false);
-
-//
-// Modal input event listener for computing a mark
-//
-document.getElementById('modal-azimuth-ok').addEventListener('click', function(ev) {
-
-  // show new mark on map
-  hawkMarker = new google.maps.Marker({
-    icon : {
-      url: "http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|80C54B",
-      optimized : false
-    },
-    position : app.currLatLng,
-    map : app.map
-  });
-
-  ev.stopPropagation();
-  ev.preventDefault();
-
-  var azimuth = document.getElementById('modal-azimuth-input').value;
-  heading = parseInt(azimuth, 10);
-
-  if (!heading || !azimuth || azimuth === '' || azimuth === ' ') {
-    alert('Please enter a valid azimuth!');
-  }
-  else {
-    document.getElementById('modal-azimuth').classList.add('hide');
-
-    // use heading to project an azimuth line
-    hawkMarker.__hawkHeadings = util.computeHeadings(app.currLatLng, heading, opts.azDist);
-    
-    // draw azimuth line based on computed headings
-    var az = new google.maps.Polyline(
-      {
-        path : [
-          hawkMarker.__hawkHeadings[0],
-          hawkMarker.__hawkHeadings[1]
-        ],
-        strokeColor: "#00aeff",
-        strokeOpacity: 0.8,
-        strokeWeight: 4,
-        map : app.map
-      }
-    );
-
-    //save shapes
-    hawkMarker.__markerID  = nextID();
-    az.__azLineID = hawkMarker.__markerID;
-    app.markers.push(hawkMarker);
-    app.azLines.push(az);
-    addMarkerTooltip(hawkMarker, az);
-
-
-    console.log('adding mark', app.markers.length, app.azLines.length);
-    // save mark
-    util.saveMark(
-      hawkMarker.__markerID,
-      app.hawkID,
-      app.currLoc,
-      heading,
-      hawkMarker.__hawkHeadings
-    );
-
-    document.getElementById('modal-azimuth-input').value = "";
-    return false;
-  }
-}, false);
-
-//
-// Show / Hide settings
-//
-settings.addEventListener('click', function(ev) {
-  document.getElementById('settings-menu').classList.toggle('hide');
-},false);
-
-
-// do a little styling quickly for our map
+// do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
-cvs.style.height = window.innerHeight * 2/3 + "px";
+cvs.style.height = window.innerHeight - 98 + "px";
 
-document.getElementById('app_version').innerHTML = "app version: " + version;
+// initialize map
+map = new google.maps.Map(
+  cvs, 
+  { 
+    zoom : opts.zoom,
+
+    // 4Lakes lat lng!
+    center : new google.maps.LatLng(43.042825,-89.292592) 
+  }
+);
+
+// initialize app obj
+app.sessionID = parseInt(localStorage.getItem('tri-hawk-ulate__sessionID'),10);
+app.hawkID = "";
+app.marks = [];
+app.curr = new google.maps.Marker();
+app.apiMarks = [];
+app.apiLines = [];
+app.apiInfos = [];
+app.intersects = [];
+// app.apiPolygon  -- gets created when there are enough marks;
+// app.apiCircle   -- gets created when there are enough marks;
+// app.apiCMark    -- gets created at the circle's center;
+// app.triCenter   -- gets saved to database from apiCircle.getPosition();
+// app.triDiameter -- gets saved to database from intersect calculation;
+
+// check for a valid sessionID, if not found create a new one.
+if (app.sessionID === void(0) || isNaN(app.sessionID)) {
+  app.sessionID = +new Date;
+  console.log("new session", app.sessionID);
+  document.getElementById('modal-hawkid').classList.remove('hide');
+}
+
+// set up other parts of the app
+dbHandler.init(app, db, map, opts);
+require('./modal')(app, db, map, opts);
+require('./find')(app, map, opts.unlocked);
+//require('./save')();
+//require('./down')();
+require('./clear')(app, map, opts);
