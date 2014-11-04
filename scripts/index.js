@@ -8,7 +8,7 @@ var cvs = document.getElementById('map-canvas'),
     utils = require('./utilities'),
     dbHandler = require('./database'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
-    snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/snapshots"),
+    snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/snapshots-beta"),
     app = {},
     map,
     opts = {
