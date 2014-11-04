@@ -26,10 +26,12 @@ var btn = document.getElementById('clearMe'),
     nmode = document.getElementById('nmode'),
     cmode = document.getElementById('cmode'),
     smode = document.getElementById('smode'),
-    modalCollaborate = document.getElementById('modal-collaborate')
-    collaborateID = document.getElementById('collaborate-sessionid');
+    modalCollaborate = document.getElementById('modal-collaborate'),
+    modalSnapshot = document.getElementById('modal-snapshot'),
+    collaborateID = document.getElementById('collaborate-sessionid'),
+    snapshotSelect = document.getElementById('modal-snapshot-select');
 
-module.exports = function(app, map, opts) {
+module.exports = function(app, snaps, map, opts) {
 
   /****************************************************************************
   *
@@ -72,11 +74,6 @@ module.exports = function(app, map, opts) {
     localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
     console.log("saved new sessionID upon clear", app.sessionID);
 
-    // save old session ID for snapshot mode
-    var pastIDs = JSON.parse(localStorage.getItem("tri-hawk-ulate__pastIDs")) || [];
-    pastIDs.push(oldID);
-    localStorage.setItem("tri-hawk-ulate__pastIDs", JSON.stringify(pastIDs));
-
     // reset database reads
     require('./database').setRead(oldID, app);
 
@@ -84,6 +81,9 @@ module.exports = function(app, map, opts) {
     document.getElementById('session_id').innerHTML = app.sessionID;
     document.getElementById('hawkID').innerHTML = "";
     document.getElementById('modal-hawkid').classList.remove('hide');
+
+    // add new sessionID to the snapshot database
+    snaps.push({ id : app.sessionID });
 
     // close mode menu
     mmenu.classList.add('hide');
@@ -94,11 +94,54 @@ module.exports = function(app, map, opts) {
   *  Event listener for inititating collaboration mode. Opens collaboration
   *  modal to enter a sessionID.
   *
-  ****************************************************************************/  
+  ****************************************************************************/
   cmode.addEventListener("click", function() {
     collaborateID.innerHTML = app.sessionID;
-    modalCollaborate.classList.toggle('hide');
+    modalCollaborate.classList.remove('hide');
     mmenu.classList.add("hide");
+  }, false);
+
+  /****************************************************************************
+  *
+  *  Event Listener for viewing past snapshots. Loads a list of all dates from
+  *  the database.
+  *
+  ****************************************************************************/
+  smode.addEventListener('click', function() {
+
+    // read all saved sessionIDs
+    snaps.once("value", function(ids) {
+
+      // loop through and set as an option, newest to oldest
+      var keys = Object.keys(ids.val());
+
+      for (var i = keys.length - 1, id; i >= 0; i--) {
+        var opt = document.createElement("option"),
+            dateOpts = {};
+
+        dateOpts.weekday = "short";
+        dateOpts.month = "short";
+        dateOpts.day = "numeric";
+        dateOpts.year = "numeric";
+        dateOpts.hour = "numeric";
+        dateOpts.minute = "numeric";
+        dateOpts.second = "numeric";
+
+        id = keys[i];
+        opt.value = ids.val()[id].id;
+        opt.innerHTML = new Date(ids.val()[id].id).toLocaleString("en-US", dateOpts);
+        snapshotSelect.appendChild(opt);
+
+      };
+
+      // let the user know the loading is done.
+      document.getElementById('snapshot-select-default').innerHTML = "Select a Date";
+      snapshotSelect.disabled = false;
+    });
+
+
+    modalSnapshot.classList.remove('hide');
+    mmenu.classList.add('hide');
   }, false);
 
   /****************************************************************************

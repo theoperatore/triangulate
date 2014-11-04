@@ -6,10 +6,12 @@
 var modalHawkID = document.getElementById('modal-hawkid'),
     modalAzimuth = document.getElementById('modal-azimuth'),
     modalCollab = document.getElementById('modal-collaborate'),
+    modalSnapshot = document.getElementById('modal-snapshot'),
     modalHawkIDInput = document.getElementById('modal-hawkid-input'),
     modalAzimuthInput = document.getElementById('modal-azimuth-input'),
     modalAzimuthSignal = document.getElementById('modal-azimuth-signal-input'),
     modalCollabInput = document.getElementById('modal-collaborate-input'),
+    modalSnapshotSelect = document.getElementById('modal-snapshot-select'),
     dbHandler = require('./database');
 
 module.exports = function(app, db, map, opts) {
@@ -156,12 +158,6 @@ module.exports = function(app, db, map, opts) {
     localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
     console.log("saved new sessionID on collaborate", app.sessionID);
 
-    // save old session ID for snapshot mode
-    var pastIDs = JSON.parse(localStorage.getItem("tri-hawk-ulate__pastIDs")) || [];
-    pastIDs.push(oldID);
-    localStorage.setItem("tri-hawk-ulate__pastIDs", JSON.stringify(pastIDs));
-    console.log("saved old sessionID on collaborate", oldID);
-
     dbHandler.setRead(oldID, app);
     modalCollab.classList.add('hide');
 
@@ -177,10 +173,89 @@ module.exports = function(app, db, map, opts) {
     modalCollab.classList.add('hide');
   }
 
+  /****************************************************************************
+  *
+  *  Function for loading a particular session from the Snapshot Modal.
+  *
+  ****************************************************************************/
+  function onSnapshotOk() {
+    var selected = modalSnapshotSelect.options[modalSnapshotSelect.selectedIndex].value;
+
+     // visually erase saved Markers to get ready for saved data
+    app.marks.forEach(function(mark) {
+      mark.m.setMap(null);
+      mark.l.setMap(null);
+      mark.m = null;
+      mark.l = null;
+      mark.i = null;
+    });
+
+    // delete and reinitialize properties to get ready for saved data
+    app.hawkID = "";
+    app.marks.length = 0;
+    app.intersects.length = 0;
+    if (app.apiPolygon) app.apiPolygon.setMap(null);
+    if (app.apiCircle) app.apiCircle.setMap(null);
+    if (app.apiCMark) app.apiCMark.setMap(null);
+    delete app.triCenter;
+    delete app.triDiameter;
+    delete app.apiPolygon;
+    delete app.apiCircle;
+    delete app.apiCMark;
+
+    // get old session ID and save snapshot id
+    var oldID = app.sessionID;
+    app.sessionID = parseInt(selected,10);
+    localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
+    console.log("saved new sessionID on snapshot", app.sessionID);
+
+    // get data and close modal
+    dbHandler.setRead(oldID, app);
+    modalSnapshot.classList.add('hide');
+
+    // clear snapshots from select
+    while (modalSnapshotSelect.firstChild) {
+      modalSnapshotSelect.removeChild(modalSnapshotSelect.firstChild);
+    }
+
+    var first = document.createElement('option');
+    first.id = 'snapshot-select-default';
+    first.value = "null";
+    first.selected = true;
+    first.disabled = true;
+    modalSnapshotSelect.appendChild(first);
+    modalSnapshotSelect.disabled = true;
+    console.log("snapshot set", app.sessionID);
+  }
+
+  /****************************************************************************
+  *
+  *  Function for handling the cancel button on the Snapshot Modal.
+  *
+  ****************************************************************************/
+  function onSnapshotCancel() {
+    modalSnapshot.classList.add('hide');
+
+    // clear snapshots from select
+    while (modalSnapshotSelect.firstChild) {
+      modalSnapshotSelect.removeChild(modalSnapshotSelect.firstChild);
+    }
+
+    var first = document.createElement('option');
+    first.id = 'snapshot-select-default';
+    first.value = "null";
+    first.selected = true;
+    first.disabled = true;
+    modalSnapshotSelect.appendChild(first);
+    modalSnapshotSelect.disabled = true;
+  }
+
   // attach modal event listeners to their repsective buttons
   document.getElementById('modal-hawkid-ok').addEventListener('click', onHawkIdOk, false);
   document.getElementById('modal-azimuth-ok').addEventListener('click', onAzimuthOk, false);
   document.getElementById('modal-azimuth-cancel').addEventListener('click', onAzimuthCancel, false);
   document.getElementById('modal-collaborate-ok').addEventListener('click', onCollabOk, false);
   document.getElementById('modal-collaborate-cancel').addEventListener('click', onCollabCancel, false);
+  document.getElementById('modal-snapshot-ok').addEventListener('click', onSnapshotOk, false);
+  document.getElementById('modal-snapshot-cancel').addEventListener('click', onSnapshotCancel, false);
 }

@@ -38,6 +38,7 @@
       <input class='sBtn mInput good' type='button' id='modal-azimuth-ok' value='Ok'>
     </div>
   </div>
+
   <div class='hide modal' id='modal-collaborate'>
     <div class="modal-container">
       <p>Which Session ID do you want to collaborate with?</p>
@@ -48,10 +49,21 @@
     </div>
   </div>
 
+  <div class='hide modal' id='modal-snapshot'>
+    <div class="modal-container">
+      <p>Pick a past date to view:</p>
+      <select id="modal-snapshot-select" disabled>
+        <option id="snapshot-select-default" value="null" selected disabled>Loading...</option>
+      </select>
+      <input class='sBtn mInput neutral' type='button' id='modal-snapshot-cancel' value='Cancel'>
+      <input class='sBtn mInput good' type='button' id='modal-snapshot-ok' value='View Data'>
+    </div>
+  </div>
+
   <div class="mode-menu hide" id="mode-menu">
     <input id="nmode" class="sBtn dflt" type="button" value="Track New Hawk"/>
     <input id="cmode" class="sBtn dflt" type="button" value="Collaborate"/>
-    <input id="smode" class="sBtn neutral" disabled type="button" value="Snapshot"/>
+    <input id="smode" class="sBtn dflt" type="button" value="Snapshot"/>
   </div>
 
   <div id='appContainer'>
@@ -89,5 +101,5 @@
 
   </div>
 
-  <script type="text/javascript" src='./bundle.min.js?0312'></script>
+  <script type="text/javascript" src='./bundle.min.js?0400'></script>
 </body>

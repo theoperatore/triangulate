@@ -8,6 +8,7 @@ var cvs = document.getElementById('map-canvas'),
     utils = require('./utilities'),
     dbHandler = require('./database'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
+    snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/snapshots"),
     app = {},
     map,
     opts = {
@@ -15,7 +16,7 @@ var cvs = document.getElementById('map-canvas'),
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.3.12";
+    version = "0.4.00";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
@@ -58,4 +59,4 @@ require('./modal')(app, db, map, opts);
 require('./find')(app, map, opts.unlocked);
 //require('./save')();
 //require('./down')();
-require('./mode')(app, map, opts);
+require('./mode')(app, snaps, map, opts);

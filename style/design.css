@@ -42,7 +42,8 @@ body {
 .good { background-color: #80C54B; }
 .bad { background-color: #ff6161; }
 .neutral { background-color: #b0b0b0; }
-.dflt { 
+.dflt {
+  width: 100%;
   font-size:1.25em;
   background-color: #70d2ff; 
 }
