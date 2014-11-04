@@ -38,7 +38,7 @@ After entering any ID, the next thing to do is use the GPS to find yourself. On 
 
 - *Track New Hawk*: resets the app to start tracking a new hawk. You will be able to enter a new HawkID upon using the "find" button again, or when attempting to save a mark.
 - *Collaborate*: a feature that allows multiple users to track the same hawk in real time.
-- *Snapshot*: this mode allows the user to either enter a sessionID or pick from a list of previous sessionIDs used on the current device to view past data. **Feature currently disabled**
+- *Snapshot*: this mode allows the user to pick from a list of dates to view the data from that session.
 
 #### Notes on using the "Find" button
 
@@ -52,9 +52,9 @@ When finished locating your coordinates, the app will place a marker on the map 
 
 If you are satisfied with the location, then hit the "save" button. This will show prompts for an Azimuth heading and signal strength.
 
-After entering relevant information, a marker will be saved in the location specified along with a line denoting your entered azimuth. The new mark will also be saved to the database automatically, so even if the app closes or you need to use a different app, as long as the save icon is green, everything is saved correctly and you need not worry about losing the mark.
+After entering relevant information, a marker will be saved in the location specified along with a line denoting your entered azimuth. The new mark will also be saved to the database automatically, so even if the app closes or you need to use a different app, as long as you can see the marker and line on the map,everything is saved correctly and you need not worry about losing the mark.
 
-If you decide that any created mark is incorrect, simply tap the mark to show a delete button that, when clicked, will delete the mark from your device. The database will automatically be updated with the change in marks. Again, as long as the save icon is green, everything is saved correctly.
+If you decide that any created mark is incorrect, simply tap the mark to show a delete button that, when clicked, will delete the mark from your device. The database will automatically be updated with the change in marks.
 
 ### Computing a triangulation
 
@@ -72,7 +72,7 @@ All relevant data calculatd from the triangulation will be saved to the database
 
 ### Tracking a new hawk
 
-When the time comes to say "good-bye" to the current hawky and "hello" to the next, hit the "New" button on the main menu at the bottom of the screen.
+When the time comes to say "good-bye" to the current hawky and "hello" to the next, hit the "New" button on the main menu at the bottom right of the screen.
 
 The modes menu will pop up allowing you to hit the button, "Track a new Hawk". This will reinitialize the app and clear all marks displayed. 
 
@@ -80,7 +80,7 @@ Before reinitializing however, the app will make one last save to the database j
 
 ### Collaborating
 
-Let's face it, sometimes tracking a hawk by your lonesome is ROUGH BUSINESS. Now with the new collaboration mode, you'll be able to track that hawk with all (max 50 because of Firebase's free account) of your friends!
+Let's face it, sometimes tracking a hawk by your lonesome is ROUGH BUSINESS. Now with the collaboration mode, you'll be able to track that hawk with all (max of 50 friends because of Firebase's free account) of your friends!
 
 To Collaborate:
 
@@ -88,8 +88,7 @@ To Collaborate:
 2. Frome the "NEW" menu, hit 'Collaborate'.
 3. The Host will read his/her sessionID to everyone else.
 4. Everyone else will type in the host's sessionID into the text box
-5. Everyone else will hit 'ok' when they are sure the id is correct.
-6. The host will hit 'Start Collaborating'.
+5. Everyone else will hit 'Start Collaboration' when they are sure the id is correct.
 7. Party Party because you can now track the same hawk all together!
 
 Collaboration mode allows multiple users to add and delete data for the same hawk in real time. 
@@ -100,9 +99,15 @@ If Chet decides that Bill's mark was incorrect, Chet can delete Bill's mark and 
 
 To stop collaborating, simply start tracking a new hawk.
 
-If you are in the middle of a session and somone wants to collaborate with you, perfect! Send them your sessionID and hit the "Start Collaboration" button. Your data will instantly appear on their device.
+If you are in the middle of a session and somone wants to collaborate with you, perfect! Send them your sessionID. Your data will instantly appear on their device.
 
 ### Checking your work: Snapshot Mode
+
+If you want to view other past/present sessions, just select the "Snapshot" mode from the "NEW" main menu. You'll see a list of dates where there is saved session information. 
+
+Select which date you wish to view and hit "ok". The data from that session is loaded.
+
+**NOTE:** You have full freedom to delete/add marks to the saved data. If you delete or overwrite any marks or triangulation data, the data is gone FOREVER. There isn't any way to recover the original data.
 
 ### A word on database structure...
 
