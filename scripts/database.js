@@ -33,11 +33,14 @@ function sorting(m1, m2) {
   if (m2 === app.marks[0]) return  1;
 
   // get Google Maps Point from LatLng objects
-  origin = map.getProjection().fromLatLngToPoint(
-    new google.maps.LatLng(app.marks[0].lat, app.marks[0].lng)
-  );
-  p1 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m1.lat, m1.lng));
-  p2 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m2.lat, m2.lng));
+  //origin = map.getProjection().fromLatLngToPoint(
+  //  new google.maps.LatLng(app.marks[0].lat, app.marks[0].lng)
+  //);
+  //p1 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m1.lat, m1.lng));
+  //p2 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m2.lat, m2.lng));
+  origin = map.getProjection().fromLatLngToPoint(app.marks[0].m.getPosition());
+  p1 = map.getProjection().fromLatLngToPoint(m1.m.getPosition());
+  p2 = map.getProjection().fromLatLngToPoint(m2.m.getPosition());
 
   // find the slopes
   s1 = (p1.y - origin.y) / (p1.x - origin.x);
@@ -47,8 +50,8 @@ function sorting(m1, m2) {
   if (s1 === s2) {
     var d1, d2;
 
-    d1 = Math.sqrt(Math.pow(p1.x - origin.x) + Math.pow(p1.y - origin.y));
-    d2 = Math.sqrt(Math.pow(p2.x - origin.x) + Math.pow(p2.y - origin.y));
+    d1 = Math.sqrt(Math.pow((p1.x - origin.x), 2) + Math.pow((p1.y - origin.y), 2));
+    d2 = Math.sqrt(Math.pow((p2.x - origin.x), 2) + Math.pow((p2.y - origin.y), 2));
 
     return ((d1 < d2) ? -1 : 1);
   }
@@ -83,8 +86,10 @@ function triangulate() {
     c = app.marks[i];
     n = app.marks[((i + 1) % app.marks.length)];
 
-    pos1 = new google.maps.LatLng(c.lat, c.lng);
-    pos2 = new google.maps.LatLng(n.lat, n.lng);
+    //pos1 = new google.maps.LatLng(c.lat, c.lng);
+    //pos2 = new google.maps.LatLng(n.lat, n.lng);
+    pos1 = c.m.getPosition();
+    pos2 = n.m.getPosition();
     headings1 = utils.computeHeadings(pos1, c.az, opts.azDist);
     headings2 = utils.computeHeadings(pos2, n.az, opts.azDist);
 
@@ -180,17 +185,17 @@ function triangulate() {
 *  If there are 3 or more marks saved, triangulate the hawk and save result.
 *
 ****************************************************************************/
-function update(markSnap) {
+function added(markSnap) {
   var m = markSnap.val(),
       btnDel = document.createElement('button'),
       mark = new google.maps.Marker(),
       info = new google.maps.InfoWindow(),
-      added = false,
+      div = document.createElement('div'),
       line,
       pos,
       headings;
 
-  console.log("adding new mark from database:", m, app.marks);
+  console.log("adding new mark from database:", m);
 
   // compute az headings from m.lat, m.lng, m.az, and opts.azDist
   pos = new google.maps.LatLng(m.lat, m.lng);
@@ -209,26 +214,26 @@ function update(markSnap) {
   mark.setPosition(pos);
   mark.setMap(map);
 
-  // save for 'new hawk' button
-  app.apiMarks.push(mark);
-  app.apiLines.push(line);
-  app.apiInfos.push(info);
-
-  // if app.marks doesn't have this mark, add it
-  console.log("checking for duplicates...");
-  for (var i = 0, c; i < app.marks.length; i++) {
-    c = app.marks[i];
-    if (c.date == m.date) {
-      added = true;
-    }
-  }
-  console.log("duplicates found?", added);
-  if (!added) app.marks.push(m);
+  // store visuals
+  app.marks.push({
+    m : mark,
+    l : line,
+    i : info,
+    id: markSnap.name(),
+    az : m.az,
+    sig : m.sig,
+    date : m.date
+  });
+    
 
   // set up infoWindow
   btnDel.classList.add("sBtn", "iBtn" , "bad")
   btnDel.innerHTML = "Delete";
-  info.setContent(btnDel);
+  
+  div.innerHTML = utils.convertToDMS(mark.getPosition());
+  div.appendChild(document.createTextNode("Azimuth: " + m.az));
+  div.appendChild(btnDel);
+  info.setContent(div);
 
   // set up event listener for infoWindow display on marker click
   google.maps.event.addListener(mark, "click", function() {
@@ -236,79 +241,80 @@ function update(markSnap) {
   });
 
   // if app.marks.length >=3 call triangulate function
-  if (app.marks.length >= 3 && app.apiMarks.length >= 3) {
+  if (app.marks.length >= 3) {
     triangulate();
   }
 
   /**************************************************************************
   *
-  *  Function to handle deleting the newly created mark and polyline. This
-  *  function also deletes and triangulation data if the number of marks
-  *  after being deleted is less than 3. Saves marks to database.
+  *  Function to handle deleting the newly created mark. 
+  *  No deleting actually happens yet, but rather, the mark gets deleted 
+  *  visually and internally in the 'removed' function.
+  * 
   *
   **************************************************************************/
   function deleteMark() {
+    // remove the mark that was deleted from the database
+    db.child(app.sessionID).child("marks").child(markSnap.name()).remove();
+  }
 
-    // find mark to delete in the list of saved marks
-    for (var i = 0, curr; i < app.marks.length; i++) {
-      curr = app.marks[i];
+  // add event listener to delete mark
+  btnDel.addEventListener('click', deleteMark, false);
+}
 
-      if (curr.lat === m.lat && curr.lng === m.lng && curr.az === m.az) {
-        app.marks.splice(i,1);
-        line.setMap(null);
-        mark.setMap(null);
-        mark = null;
-        line = null;
+/****************************************************************************
+*
+*  Firebase event function to handle the deletion of a marker. 
+*
+****************************************************************************/
+function removed(delMark) {
+  var ma = delMark.val();
 
-        // if we go bellow 2 marks, remove triangulated data
-        if (app.marks.length <= 2) {
+  for (var i = 0, curr; i < app.marks.length; i++) {
+    curr = app.marks[i];
 
-          // remove circle, intersects, center mark
-          app.intersects.length = 0;
-          if (app.apiPolygon) app.apiPolygon.setMap(null);
-          if (app.apiCircle) app.apiCircle.setMap(null);
-          if (app.apiCMark) app.apiCMark.setMap(null);
-          delete app.triCenter;
-          delete app.triDiameter;
-          delete app.apiPolygon;
-          delete app.apiCircle;
-          delete app.apiCMark;
+    console.log("deleting", curr);
+    // if we find the mark to delete
+    if (curr.id === delMark.name()) {
 
-        }
+      // remove visual components
+      curr.m.setMap(null);
+      curr.l.setMap(null);
+      curr.i = null;
 
-        // otherwise, re-calculate based on existing marks
-        else {
-          console.log("re-triangulating...");
-          triangulate();
-        }
+      // remove from collection
+      app.marks.splice(i, 1);
 
-        // save new state
-        db.child(app.sessionID).set(
-          { 
-            "marks" : app.marks,
-            "hawkID": app.hawkID,
-            "triCenter" : (app.triCenter || {}),
-            "triDiameter" : (app.triDiameter || 0)
-          }
-        );
-
-        break;
+      // re-triangulate if necessary
+      if (app.marks.length >= 3) {
+        triangulate();
       }
-    }
 
-    // find mark to delete in list of apiMarkers
-    for (var i = 0, curr; i < app.apiMarks.length; i++) {
-      curr = app.apiMarks[i];
+      // if not, delete triangulated parts
+      else {
 
-      if (curr.getPosition().lat() === m.lat && curr.getPosition().lng() === m.lng) {
-        app.apiMarks.splice(i,1);
-        app.apiLines.splice(i,1);
-        app.apiInfos.splice(i,1);
-        break;
+        app.intersects.length = 0;
+        if (app.apiPolygon) app.apiPolygon.setMap(null);
+        if (app.apiCircle) app.apiCircle.setMap(null);
+        if (app.apiCMark) app.apiCMark.setMap(null);
+        delete app.triCenter;
+        delete app.triDiameter;
+        delete app.apiPolygon;
+        delete app.apiCircle;
+        delete app.apiCMark;
       }
+
+      // save new state
+      db.child(app.sessionID).update(
+        { 
+          "triCenter" : (app.triCenter || {}),
+          "triDiameter" : (app.triDiameter || 0)
+        }
+      );
+
+      break;
     }
   }
-  btnDel.addEventListener('click', deleteMark, false);
 }
 
 /****************************************************************************
@@ -325,115 +331,19 @@ function updateHawkID(snap) {
 
 /****************************************************************************
 *
-*  Collaboration function to be called when a collaborator deletes a mark.
-*
-*  This will delete the mark remotely. Delete closure function will delete
-*  the mark locally.
-*
-****************************************************************************/
-function collabDelete(snap) {
-  console.log("running collab delete");
-  var m = snap.val();
-
-  // find mark to delete in the list of saved marks
-  for (var i = 0, curr; i < app.marks.length; i++) {
-    curr = app.marks[i];
-
-    if (curr.lat === m.lat && curr.lng === m.lng && curr.az === m.az) {
-      app.marks.splice(i,1);
-
-      // if we go bellow 2 marks, remove triangulated data
-      if (app.marks.length <= 2) {
-
-        // remove circle, intersects, center mark
-        app.intersects.length = 0;
-        if (app.apiPolygon) app.apiPolygon.setMap(null);
-        if (app.apiCircle) app.apiCircle.setMap(null);
-        if (app.apiCMark) app.apiCMark.setMap(null);
-        delete app.triCenter;
-        delete app.triDiameter;
-        delete app.apiPolygon;
-        delete app.apiCircle;
-        delete app.apiCMark;
-
-      }
-
-      // otherwise, re-calculate based on existing marks
-      else {
-        console.log("re-triangulating...");
-        triangulate();
-      }
-
-      // save new state
-      db.child(app.sessionID).set(
-        { 
-          "marks" : app.marks,
-          "hawkID": app.hawkID,
-          "triCenter" : (app.triCenter || {}),
-          "triDiameter" : (app.triDiameter || 0)
-        }
-      );
-
-      break;
-    }
-  }
-
-  // find mark to delete in list of apiMarkers
-  for (var i = 0, curr; i < app.apiMarks.length; i++) {
-    curr = app.apiMarks[i];
-
-    if (curr.getPosition().lat() === m.lat && curr.getPosition().lng() === m.lng) {
-      var mark, line, info;
-
-      console.log("found mark to delete", app.apiMarks[i]);
-
-      mark = app.apiMarks[i];
-      line = app.apiLines[i];
-      info = app.apiInfos[i];
-
-      app.apiMarks.splice(i,1);
-      app.apiLines.splice(i,1);
-      app.apiInfos.splice(i,1);
-
-      mark.setMap(null);
-      line.setMap(null);
-      mark = null;
-      line = null;
-      info = null;
-      break;
-    }
-  }
-}
-
-/****************************************************************************
-*
 *  Clears, then sets the "child_added" read function again. Primarily used
 *  after the main menu button "Track New Hawk" is clicked.
 *
 ****************************************************************************/
 exports.setRead = function(old, a) {
   app = a;
-  db.child(old).child('marks').off("child_added", update);
-  db.child(old).child("marks").off("child_removed", collabDelete);
-  db.child(app.sessionID).child('marks').on("child_added", update);
+  db.child(old).child('marks').off('child_added', added);
+  db.child(old).child('marks').off('child_removed', removed);
+  db.child(old).child('hawkID').off('child_changed', updateHawkID);
+  db.child(app.sessionID).child('marks').on('child_added', added);
+  db.child(app.sessionID).child('marks').on('child_removed', removed);
+  db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
 };
-
-/****************************************************************************
-*
-*  Clears, then sets the "child_added" read function again. Primarily used
-*  for collaboration mode
-*
-****************************************************************************/
-exports.setCollaboration = function(old, a) {
-  app = a;
-
-  db.child(app.sessionID).child("hawkID").once("value", updateHawkID);
-  db.child(old).child('marks').off("child_added", update);
-  db.child(old).child("marks").off("child_removed", collabDelete);
-  db.child(app.sessionID).child("marks").on("child_added", update);
-  db.child(app.sessionID).child("marks").on("child_removed", collabDelete);
-
-}
 
 /****************************************************************************
 *
@@ -448,13 +358,13 @@ exports.init = function(a, d, m, o) {
 
   /****************************************************************************
   *
-  *  Firebase event on user saving new mark location. Adds a new Marker, 
-  *  InfoWindow, and Polyline to the map.
-  *
-  *  If there are 3 or more marks saved, triangulate the hawk and save result.
-  *  
-  *  Also reads the hawkID from the database once too.
+  *  Firebase event on saving a new mark, deleting a saved mark, and reading 
+  *  the hawkID from the database.
+  * 
   ****************************************************************************/
-  db.child(app.sessionID).child("marks").on('child_added', update);
-  db.child(app.sessionID).child("hawkID").once("value", updateHawkID);
+  db.child(app.sessionID).child('marks').on('child_added', added);
+  db.child(app.sessionID).child('marks').on('child_removed', removed);
+  db.child(app.sessionID).child('hawkID').on('child_changed', updateHawkID);
+  db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
+
 }

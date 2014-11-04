@@ -88,25 +88,18 @@ module.exports = function(app, db, map, opts) {
       return;
     }
 
-    // add new mark to app.marks
-    var mark = {};
-    mark.lat = app.curr.getPosition().lat();
-    mark.lng = app.curr.getPosition().lng();
-    mark.az  = az;
-    mark.sigStr = sig;
-    mark.date = +new Date;
-    app.marks.push(mark);
-
-    // save marks to the database
-    db.child(app.sessionID).update(
-      { 
-        "marks" : app.marks,
-        "hawkID": app.hawkID
-      }
-    );
+    // push new mark to the database
+    db.child(app.sessionID).child("marks").push({
+      lat : app.curr.getPosition().lat(),
+      lng : app.curr.getPosition().lng(),
+      az  : az,
+      sig : sig,
+      date: +new Date
+    });
 
     // close modal
     modalAzimuthInput.value = "";
+    modalAzimuthSignal.value = "null";
     modalAzimuth.classList.add('hide');
   }
 
@@ -127,6 +120,7 @@ module.exports = function(app, db, map, opts) {
   function onCollabOk() {
     var collaborateID;
     
+    // validate that sessionID is a number.
     console.log("trying collaborate sessionID", modalCollabInput.value)
     collaborateID = parseInt(modalCollabInput.value);
     if (isNaN(collaborateID) || collaborateID === void(0)) {
@@ -134,30 +128,19 @@ module.exports = function(app, db, map, opts) {
       return;
     }
 
-    // erase saved Markers
-    app.apiMarks.forEach(function(m) {
-      m.setMap(null);
-      m = null;
-    });
-
-    // erase saved Polylines
-    app.apiLines.forEach(function(l) {
-      l.setMap(null);
-      l = null;
-    });
-
-    // erase saved InfoWindows
-    app.apiInfos.forEach(function(i) {
-      i = null;
+    // visually erase saved Markers
+    app.marks.forEach(function(mark) {
+      mark.m.setMap(null);
+      mark.l.letMap(null);
+      mark.m = null;
+      mark.l = null;
+      mark.i = null;
     });
 
     // delete and reinitialize properties
     app.hawkID = "";
     app.marks.length = 0;
     app.intersects.length = 0;
-    app.apiMarks.length = 0;
-    app.apiLines.length = 0;
-    app.apiInfos.length = 0;
     if (app.apiPolygon) app.apiPolygon.setMap(null);
     if (app.apiCircle) app.apiCircle.setMap(null);
     if (app.apiCMark) app.apiCMark.setMap(null);
@@ -179,19 +162,10 @@ module.exports = function(app, db, map, opts) {
     localStorage.setItem("tri-hawk-ulate__pastIDs", JSON.stringify(pastIDs));
     console.log("saved old sessionID on collaborate", oldID);
 
-    dbHandler.setCollaboration(oldID, app);
+    dbHandler.setRead(oldID, app);
     modalCollab.classList.add('hide');
-  }
 
-  /****************************************************************************
-  *
-  *  Function for to tell the app that you are collaborating with another user
-  *  and the app should listen for mark delete events.
-  *
-  ****************************************************************************/
-  function onCollabStart() {
-    dbHandler.setCollaboration(app.sessionID, app);
-    modalCollab.classList.add('hide'); 
+    console.log("collaboration mode set", app.sessionID);
   }
 
   /****************************************************************************
@@ -208,6 +182,5 @@ module.exports = function(app, db, map, opts) {
   document.getElementById('modal-azimuth-ok').addEventListener('click', onAzimuthOk, false);
   document.getElementById('modal-azimuth-cancel').addEventListener('click', onAzimuthCancel, false);
   document.getElementById('modal-collaborate-ok').addEventListener('click', onCollabOk, false);
-  document.getElementById('modal-collaborate-start').addEventListener('click', onCollabStart, false);
   document.getElementById('modal-collaborate-cancel').addEventListener('click', onCollabCancel, false);
 }

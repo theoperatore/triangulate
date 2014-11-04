@@ -103,19 +103,19 @@ module.exports = function(app, map, debug) {
             google.maps.event.clearListeners(map, 'dragend');
             google.maps.event.addListener(map, 'dragend', function() {
               
-            app.curr.setPosition(map.getCenter());
-            dms = utils.convertToDMS(map.getCenter());
+              app.curr.setPosition(map.getCenter());
+              dms = utils.convertToDMS(map.getCenter());
 
-            save.classList.add('sBtn');
-            save.classList.add('good');
-            save.innerHTML = "Save";
-            save.removeEventListener('click', onSave, false);
-            save.addEventListener('click', onSave, false);
+              save.classList.add('sBtn');
+              save.classList.add('good');
+              save.innerHTML = "Save";
+              save.removeEventListener('click', onSave, false);
+              save.addEventListener('click', onSave, false);
 
-            div.innerHTML = dms;
-            div.appendChild(save);
+              div.innerHTML = dms;
+              div.appendChild(save);
 
-            info.setContent(div);
+              info.setContent(div);
               
             });
           }

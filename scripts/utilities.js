@@ -129,6 +129,7 @@ exports.convertToDMS = function(coords) {
 
   degLng = Math.abs(degLng);
   out += degLng + "&deg; " + minLng + "' " + secLng + "\" " + dirLng;
+  out += "</br>";
 
   return out;
 

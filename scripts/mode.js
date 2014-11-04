@@ -44,30 +44,19 @@ module.exports = function(app, map, opts) {
   ****************************************************************************/
   nmode.addEventListener('click', function() {
 
-    // erase saved Markers
-    app.apiMarks.forEach(function(m) {
-      m.setMap(null);
-      m = null;
-    });
-
-    // erase saved Polylines
-    app.apiLines.forEach(function(l) {
-      l.setMap(null);
-      l = null;
-    });
-
-    // erase saved InfoWindows
-    app.apiInfos.forEach(function(i) {
-      i = null;
+    // visually erase saved Markers
+    app.marks.forEach(function(mark) {
+      mark.m.setMap(null);
+      mark.l.setMap(null);
+      mark.m = null;
+      mark.l = null;
+      mark.i = null;
     });
 
     // delete and reinitialize properties
     app.hawkID = "";
     app.marks.length = 0;
     app.intersects.length = 0;
-    app.apiMarks.length = 0;
-    app.apiLines.length = 0;
-    app.apiInfos.length = 0;
     if (app.apiPolygon) app.apiPolygon.setMap(null);
     if (app.apiCircle) app.apiCircle.setMap(null);
     if (app.apiCMark) app.apiCMark.setMap(null);
@@ -107,7 +96,6 @@ module.exports = function(app, map, opts) {
   *
   ****************************************************************************/  
   cmode.addEventListener("click", function() {
-    console.log("collaboration mode");
     collaborateID.innerHTML = app.sessionID;
     modalCollaborate.classList.toggle('hide');
     mmenu.classList.add("hide");

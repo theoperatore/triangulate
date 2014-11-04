@@ -15,7 +15,7 @@ var cvs = document.getElementById('map-canvas'),
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.3.01";
+    version = "0.3.11";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
@@ -37,9 +37,6 @@ app.sessionID = parseInt(localStorage.getItem('tri-hawk-ulate__sessionID'),10);
 app.hawkID = "";
 app.marks = [];
 app.curr = new google.maps.Marker();
-app.apiMarks = [];
-app.apiLines = [];
-app.apiInfos = [];
 app.intersects = [];
 // app.apiPolygon  -- gets created when there are enough marks;
 // app.apiCircle   -- gets created when there are enough marks;
