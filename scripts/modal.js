@@ -131,7 +131,7 @@ module.exports = function(app, db, map, opts) {
     // visually erase saved Markers
     app.marks.forEach(function(mark) {
       mark.m.setMap(null);
-      mark.l.letMap(null);
+      mark.l.setMap(null);
       mark.m = null;
       mark.l = null;
       mark.i = null;
