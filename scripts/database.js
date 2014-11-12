@@ -32,12 +32,7 @@ function sorting(m1, m2) {
   if (m1 === app.marks[0]) return -1;
   if (m2 === app.marks[0]) return  1;
 
-  // get Google Maps Point from LatLng objects
-  //origin = map.getProjection().fromLatLngToPoint(
-  //  new google.maps.LatLng(app.marks[0].lat, app.marks[0].lng)
-  //);
-  //p1 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m1.lat, m1.lng));
-  //p2 = map.getProjection().fromLatLngToPoint(new google.maps.LatLng(m2.lat, m2.lng));
+  // get point locations from LatLng objs
   origin = map.getProjection().fromLatLngToPoint(app.marks[0].m.getPosition());
   p1 = map.getProjection().fromLatLngToPoint(m1.m.getPosition());
   p2 = map.getProjection().fromLatLngToPoint(m2.m.getPosition());
@@ -86,8 +81,6 @@ function triangulate() {
     c = app.marks[i];
     n = app.marks[((i + 1) % app.marks.length)];
 
-    //pos1 = new google.maps.LatLng(c.lat, c.lng);
-    //pos2 = new google.maps.LatLng(n.lat, n.lng);
     pos1 = c.m.getPosition();
     pos2 = n.m.getPosition();
     headings1 = utils.computeHeadings(pos1, c.az, opts.azDist);
@@ -331,6 +324,38 @@ function updateHawkID(snap) {
 
 /****************************************************************************
 *
+*  Function to pan to the last mark for this session, if one exists
+*
+****************************************************************************/
+function panToLastMark(snap) {
+  if (snap.val()) {
+    var val = snap.val(),
+        keys, bounds;
+
+    // assume that the last key property added is the newest mark
+    keys = Object.keys(val.marks);
+    if (keys.length === 1) {
+      map.panTo({ lat : val.marks[keys[0]].lat, lng : val.marks[keys[0]].lng });
+    }
+    else if (keys.length >= 2) {
+      bounds = new google.maps.LatLngBounds();
+
+      keys.forEach(function(key) {
+        bounds.extend(new google.maps.LatLng(val.marks[key].lat, val.marks[key].lng));
+      });
+
+      // show everything if there exists triangulated data
+      if (val.triCenter) {
+        bounds.extend(new google.maps.LatLng(val.triCenter.lat, val.triCenter.lng));
+      }
+
+      map.fitBounds(bounds);
+    }
+  }
+}
+
+/****************************************************************************
+*
 *  Clears, then sets the "child_added" read function again. Primarily used
 *  after the main menu button "Track New Hawk" is clicked.
 *
@@ -342,7 +367,9 @@ exports.setRead = function(old, a) {
   db.child(old).child('hawkID').off('child_changed', updateHawkID);
   db.child(app.sessionID).child('marks').on('child_added', added);
   db.child(app.sessionID).child('marks').on('child_removed', removed);
+  db.child(app.sessionID).child('hawkID').on('child_changed', updateHawkID);
   db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
+  db.child(app.sessionID).once('value', panToLastMark);
 };
 
 /****************************************************************************
@@ -366,5 +393,6 @@ exports.init = function(a, d, m, o) {
   db.child(app.sessionID).child('marks').on('child_removed', removed);
   db.child(app.sessionID).child('hawkID').on('child_changed', updateHawkID);
   db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
+  db.child(app.sessionID).once('value', panToLastMark);
 
 }

@@ -223,8 +223,9 @@ module.exports = function(app, db, map, opts) {
     first.value = "null";
     first.selected = true;
     first.disabled = true;
-    modalSnapshotSelect.appendChild(first);
+    first.innerHTML = "Loading...";
     modalSnapshotSelect.disabled = true;
+    modalSnapshotSelect.appendChild(first);
     console.log("snapshot set", app.sessionID);
   }
 
@@ -246,8 +247,9 @@ module.exports = function(app, db, map, opts) {
     first.value = "null";
     first.selected = true;
     first.disabled = true;
-    modalSnapshotSelect.appendChild(first);
+    first.innerHTML = "Loading...";
     modalSnapshotSelect.disabled = true;
+    modalSnapshotSelect.appendChild(first);
   }
 
   // attach modal event listeners to their repsective buttons

@@ -51,13 +51,52 @@ body {
 #settings-toggle {
   margin: 15px;
   width: 1.5em;
+  float:right;
 }
 #hawkID-display {
   font-size:1.5em;
   float:left; 
   margin:10px;
 }
-#settings { float:right; margin-right: 0.5em; }
+
+#settings-menu { 
+  position: absolute;
+  top: 60px;
+  right: 3%;
+  background: rgba(255, 255, 255, 1);
+  border: 1px solid rgba(171,171,171,1);
+  box-shadow: 0px 0px 5px 2px rgba(171,171,171,1);
+  padding: 10px;
+  border-radius: 5pt;
+  z-index:1337;
+}
+#settings-menu table {
+  border-collapse: separate;
+  border-spacing: 10px 2px;
+}
+
+#settings-menu:before, #settings-menu:after {
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  border: 10px solid transparent;
+}
+#settings-menu:before {
+  z-index: 1337;
+  border-bottom-color: rgba(171,171,171,1);
+  position: absolute;
+  top: -20px;
+  right: 20px;
+}
+#settings-menu:after {
+  z-index: 1338;
+  border-bottom-color: rgba(255, 255, 255, 1);
+  position: absolute;
+  top: -19px;
+  right: 20px;
+}
+
 #title-bar {
   height:50px;
 }
@@ -132,7 +171,7 @@ select {
 .driver-div {
   text-align: center;
   float:left;
-  width: 25%;
+  width: 33.3333333333%;
   margin:0px 0px;
   /*background-color: rgba(235, 235, 235, 1);*/
   font-size: 20px;

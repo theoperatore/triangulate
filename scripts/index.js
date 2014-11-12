@@ -11,12 +11,12 @@ var cvs = document.getElementById('map-canvas'),
     snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/snapshots-beta"),
     app = {},
     map,
-    opts = {
+    opts = JSON.parse(localStorage.getItem('tri-hawk-ulate__options')) || {
       zoom   : 17,
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.4.00";
+    version = "0.5.03";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
@@ -55,8 +55,9 @@ if (app.sessionID === void(0) || isNaN(app.sessionID)) {
 
 // set up other parts of the app
 dbHandler.init(app, db, map, opts);
+require('./settings')(app, map, opts, version);
 require('./modal')(app, db, map, opts);
-require('./find')(app, map, opts.unlocked);
+require('./find')(app, map, opts);
 //require('./save')();
 //require('./down')();
 require('./mode')(app, snaps, map, opts);

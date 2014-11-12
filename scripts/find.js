@@ -15,7 +15,7 @@ var info = new google.maps.InfoWindow(),
     utils = require('./utilities');
 
 // main export function
-module.exports = function(app, map, debug) {
+module.exports = function(app, map, opts) {
 
 
   /****************************************************************************
@@ -45,7 +45,7 @@ module.exports = function(app, map, debug) {
 
       glyph.classList.toggle('hide');
       spin.classList.toggle('hide');
-      map.setZoom(14);
+      map.setZoom(opts.zoom);
 
       // if the hawkId hasn't been set, set it now.
       if (app.hawkID === "") {
@@ -99,7 +99,7 @@ module.exports = function(app, map, debug) {
           })
 
           // debug/unlock mode
-          if (debug) {
+          if (opts.unlocked) {
             google.maps.event.clearListeners(map, 'dragend');
             google.maps.event.addListener(map, 'dragend', function() {
               

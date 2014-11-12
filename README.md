@@ -1,6 +1,8 @@
 Triangulate (Tri-Hawk-ulate)
 ============================
 
+current version: 0.5.03
+
 Uses the [GoogleMaps APIv3](https://developers.google.com/maps/documentation/javascript/reference) to get the user's current GPS location for Raptor Triangulation! 
 
 This app is being developed specifically for the [Four Lakes Wildlife Center](https://www.giveshelter.org/four-lakes-wildlife-center.html), but feel free to use the app and go nuts as tri-hawk-ulation knows no bounds...
@@ -31,8 +33,6 @@ After entering any ID, the next thing to do is use the GPS to find yourself. On 
 - If the icon appears red, something wrong has happened. Click on the save button and you will see the error.
 - If the icon appears green, everything has been saved successfully! Way to go! 
 - If the icon appears blue, a current save is in progress and the success or failure will be reflected momentarily.
-
-**Export**: Denoted by the arrow leading away from an HDD&mdash;this button will allow you to download (as a text file) a snapshot of the data for the current session, i.e. the current hawk you are tracking.
 
 **New**: Denoted by a plus sign&mdash;this button will open a menu with some options for different modes the app uses: track new hawk, collaborate, snapshot.
 
