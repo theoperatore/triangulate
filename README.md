@@ -76,8 +76,6 @@ When the time comes to say "good-bye" to the current hawky and "hello" to the ne
 
 The modes menu will pop up allowing you to hit the button, "Track a new Hawk". This will reinitialize the app and clear all marks displayed. 
 
-Before reinitializing however, the app will make one last save to the database just in case something was missed, or something crazy happened. If the save cannot be completed, then the app will abort reinitializing and retain the current information.
-
 ### Collaborating
 
 Let's face it, sometimes tracking a hawk by your lonesome is ROUGH BUSINESS. Now with the collaboration mode, you'll be able to track that hawk with all (max of 50 friends because of Firebase's free account) of your friends!
