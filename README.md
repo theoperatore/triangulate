@@ -1,7 +1,7 @@
 Triangulate (Tri-Hawk-ulate)
 ============================
 
-current version: 0.5.03
+current version: 0.6.04
 
 Uses the [GoogleMaps APIv3](https://developers.google.com/maps/documentation/javascript/reference) to get the user's current GPS location for Raptor Triangulation! 
 
