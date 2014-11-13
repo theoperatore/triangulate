@@ -78,7 +78,6 @@ module.exports = function(app, snaps, map, opts) {
     require('./database').setRead(oldID, app);
 
     // update settings menu with session id and clear hawkID display
-    document.getElementById('session_id').innerHTML = app.sessionID;
     document.getElementById('hawkID').innerHTML = "";
     document.getElementById('modal-hawkid').classList.remove('hide');
 
