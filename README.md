@@ -24,7 +24,7 @@ Just go to [the app site](http://anpetersen.me/triangulate) to access the web ap
 
 Once the app loads, if you have not been tracking a hawk, the app will prompt you for a hawk ID. 
 
-After entering any ID, the next thing to do is use the GPS to find yourself. On the bottom of the screen are the buttons that make up the main menu. From left to right: find, save, export, new.
+After entering any ID, the next thing to do is use the GPS to find yourself. On the bottom of the screen are the buttons that make up the main menu. From left to right: find, save, new.
 
 **Find**: Denoted by the spyglass&mdash;this button will use your device's GPS to locate and show your current postion on the map.
 
