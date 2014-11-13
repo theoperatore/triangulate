@@ -12,6 +12,7 @@ var modalHawkID = document.getElementById('modal-hawkid'),
     modalAzimuthSignal = document.getElementById('modal-azimuth-signal-input'),
     modalCollabInput = document.getElementById('modal-collaborate-input'),
     modalSnapshotSelect = document.getElementById('modal-snapshot-select'),
+    save = require('./save'),
     dbHandler = require('./database');
 
 module.exports = function(app, db, map, opts) {
@@ -43,9 +44,17 @@ module.exports = function(app, db, map, opts) {
     document.getElementById('hawkID').innerHTML = id;
 
     // save hawkID to database
+    save.setState(null);
     db.child(app.sessionID).update({
       "hawkID" : app.hawkID
-    })
+    }, function(err) {
+      if (err) {
+        save.setState({ error : err});
+      }
+      else {
+        save.setState({ ok : true });
+      }
+    });
 
     // close modal
     modalHawkIDInput.value = "";
@@ -91,12 +100,20 @@ module.exports = function(app, db, map, opts) {
     }
 
     // push new mark to the database
+    save.setState(null);
     db.child(app.sessionID).child("marks").push({
       lat : app.curr.getPosition().lat(),
       lng : app.curr.getPosition().lng(),
       az  : az,
       sig : sig,
       date: +new Date
+    }, function(err) {
+      if (err) {
+        save.setState({ error : err });
+      }
+      else {
+        save.setState({ ok : true });
+      }
     });
 
     // close modal

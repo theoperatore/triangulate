@@ -53,6 +53,11 @@ module.exports = function(app, map, opts, version) {
             React.DOM.tr(null,
               React.DOM.td(null, "app version"),
               React.DOM.td(null, version)
+            ),
+            React.DOM.tr(null,
+              React.DOM.td({ colSpan : "2", className : "center" }, 
+                React.DOM.a({href : "https://github.com/theoperatore/triangulate/blob/gh-pages/README.md"}, "Readme")
+              )
             )
           )
         )
@@ -60,11 +65,8 @@ module.exports = function(app, map, opts, version) {
     }
   });
 
-
-
-  React.render(Menu(), menu_anchor);
-  // add sessionID and version info to settings menu
-  //document.getElementById('app_version').innerHTML = opts.version;
+  // render the settings menu
+  React.render(React.createFactory(Menu)(), menu_anchor);
 }
 
   

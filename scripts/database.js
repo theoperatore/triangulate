@@ -5,6 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 var utils = require('./utilities'),
+    save  = require('./save'),
     app, db, map, opts;
 
 
@@ -160,11 +161,19 @@ function triangulate() {
   });
   
   // save important triangulated data to the database
+  save.setState(null);
   db.child(app.sessionID).update({
     "triDiameter" : 2*radius,
     "triCenter" : {
       lat : center.lat(),
       lng : center.lng()
+    }
+  }, function(err) {
+    if (err) {
+      save.setState({ error : err });
+    }
+    else {
+      save.setState({ ok : true });
     }
   });
 }
@@ -248,7 +257,17 @@ function added(markSnap) {
   **************************************************************************/
   function deleteMark() {
     // remove the mark that was deleted from the database
-    db.child(app.sessionID).child("marks").child(markSnap.name()).remove();
+    save.setState(null);
+    db.child(app.sessionID).child("marks").child(markSnap.name()).remove(
+      function(err) {
+        if (err) {
+          save.setState({ error : err });
+        }
+        else {
+          save.setState({ ok : true });
+        }
+      }
+    );
   }
 
   // add event listener to delete mark
@@ -298,10 +317,18 @@ function removed(delMark) {
       }
 
       // save new state
+      save.setState(null);
       db.child(app.sessionID).update(
         { 
           "triCenter" : (app.triCenter || {}),
           "triDiameter" : (app.triDiameter || 0)
+        }, function(err) {
+          if (err) {
+            save.setState({ error : err });
+          }
+          else {
+            save.setState({ ok : true });
+          }
         }
       );
 

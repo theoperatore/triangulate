@@ -48,6 +48,11 @@ body {
   background-color: #70d2ff; 
 }
 
+.glyphicon-floppy-remove { color: #ff6161; }
+.glyphicon-floppy-save { color: #70d2ff; }
+.glyphicon-floppy-saved { color: #80C54B; }
+.center { text-align: center; }
+
 #settings-toggle {
   margin: 15px;
   width: 1.5em;
