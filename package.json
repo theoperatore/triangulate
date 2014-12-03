@@ -5,6 +5,7 @@
   "main": "scripts/index.js",
   "scripts": {
     "test": "beefy scripts/index.js:bundle.js",
+    "admin": "browserify -t reactify ./scripts/admin.jsx -o admin/bundle.js && beefy",
     "deploy": "browserify scripts/index.js | uglifyjs -o bundle.min.js"
   },
   "keywords": [
@@ -17,6 +18,8 @@
     "beefy": "^2.1.1",
     "browserify": "^5.10.1",
     "react": "^0.12.0",
+    "react-bootstrap": "^0.12.0",
+    "reactify": "^0.16.0",
     "uglifyjs": "^2.3.6"
   },
   "dependencies": {

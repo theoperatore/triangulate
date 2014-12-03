@@ -5,10 +5,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 var cvs = document.getElementById('map-canvas'),
     Firebase = require('firebase'),
-    utils = require('./utilities'),
     dbHandler = require('./database'),
-    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
-    snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/snapshots-beta"),
+    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/data-beta"),
+    snaps = new Firebase("https://tri-hawk-ulate.firebaseio.com/sessions-beta"),
+    hawks = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
     app = {},
     map,
     opts = JSON.parse(localStorage.getItem('tri-hawk-ulate__options')) || {
@@ -16,7 +16,7 @@ var cvs = document.getElementById('map-canvas'),
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.6.04";
+    version = "0.7.06";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
@@ -56,7 +56,7 @@ if (app.sessionID === void(0) || isNaN(app.sessionID)) {
 // set up other parts of the app
 dbHandler.init(app, db, map, opts);
 require('./settings')(app, map, opts, version);
-require('./modal')(app, db, map, opts);
+require('./modal')(app, db, snaps, hawks, map, opts);
 require('./find')(app, map, opts);
 require('./save').init();
 require('./mode')(app, snaps, map, opts);

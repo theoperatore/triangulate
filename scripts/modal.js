@@ -15,7 +15,7 @@ var modalHawkID = document.getElementById('modal-hawkid'),
     save = require('./save'),
     dbHandler = require('./database');
 
-module.exports = function(app, db, map, opts) {
+module.exports = function(app, db, sessiondb, hawkdb, map, opts) {
 
   /****************************************************************************
   *
@@ -115,6 +115,62 @@ module.exports = function(app, db, map, opts) {
         save.setState({ ok : true });
       }
     });
+
+    // add sessionID to db if not saved yet
+    sessiondb.once("value", function(sessions) {
+      if (sessions.val()) {
+
+        var keys = Object.keys(sessions.val()),
+            found = false;
+
+        for (var i = 0; i < keys.length; i++) {
+          if (app.sessionID === sessions.val()[keys[i]].id) {
+            console.log("found saved sessionID, not adding");
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          console.log("saving new sessionID");
+          sessiondb.push({ id : app.sessionID });
+        }
+      }
+      else {
+        console.log("no sessionIDs found, adding");
+        sessiondb.push({ id : app.sessionID });
+      }
+    });
+
+    // add the sessionID to hawkdb if not yet
+    hawkdb.once("value", function(hawks) {
+      var cleanHawkID = app.hawkID.replace(".", "_");
+      if (hawks.val() && hawks.val()[cleanHawkID]) {
+        
+        var keys = Object.keys(hawks.val()[cleanHawkID]),
+            found = false;
+
+        for (var i = 0; i < keys.length; i++) {
+          if (app.sessionID === hawks.val()[cleanHawkID][keys[i]].sessionID) {
+            console.log("sessionID found for this hawkID, not adding.");
+            found = true;
+            break;
+          }
+        }
+
+        // push new sessionID for this hawk
+        if (!found) {
+          console.log("hawkID found, new sessionID saved");
+          hawkdb.child(cleanHawkID).push({ sessionID : app.sessionID });
+        }
+      }
+      else {
+        console.log("new hawkID found, adding to db");
+        //hawks.child(app.hawkID).child("sessions").push({sessionID : app.sessionID});
+        hawkdb.child(cleanHawkID).push({ sessionID : app.sessionID });
+      }
+    });
+    
 
     // close modal
     modalAzimuthInput.value = "";
