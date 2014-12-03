@@ -46,6 +46,7 @@ module.exports = function(app, db, sessiondb, hawkdb, map, opts) {
     // save hawkID to database
     save.setState(null);
     db.child(app.sessionID).update({
+      "sessionID" : app.sessionID,
       "hawkID" : app.hawkID
     }, function(err) {
       if (err) {
@@ -114,6 +115,11 @@ module.exports = function(app, db, sessiondb, hawkdb, map, opts) {
       else {
         save.setState({ ok : true });
       }
+    });
+
+    // make sure sessionID is saved
+    db.child(app.sessionID).update({
+      "sessionID" : app.sessionID
     });
 
     // add sessionID to db if not saved yet
