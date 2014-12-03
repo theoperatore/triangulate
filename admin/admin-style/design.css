@@ -1,0 +1,21 @@
+.page-header {
+  margin: 0 auto;
+}
+.nav.nav-pills {
+  margin-top: 20px;
+}
+
+.marks-enter {
+  opacity: 0.01;
+  transition: all 500ms ease-in;
+}
+.marks-enter.marks-enter-active {
+  opacity: 1;
+}
+.marks-leave {
+  opacity: 1;
+  transition: all 500ms ease-in;
+}
+.marks-leave.marks-leave-active {
+  opacity: 0.01;
+}
