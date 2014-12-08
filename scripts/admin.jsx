@@ -3,6 +3,7 @@ var React = require('react/addons'),
     Firebase = require('firebase'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/data-beta"),
     hawksdb = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
+    utils = require('./admin-scripts/utils'),
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup,
     App, Header, Session, Hawk;
 
@@ -15,7 +16,9 @@ Header = React.createClass({
     var out = (this.props.options.sort === "hawkid") ? "session" : "hawkid";
     this.props.onOptionChange({ sort : out });
   },
-  handleExport : function() {},
+  handleExport : function() {
+    this.props.handleExport();
+  },
   handleArchive : function() {},
   testAdd : function() {
     this.props.testAdd();
@@ -229,7 +232,6 @@ App = React.createClass({
       this.setState({ hawks : hawks });
 
     }.bind(this));
-
   },
   onOptionChange : function(options) {
     this.setState({ options : options });
@@ -250,6 +252,27 @@ App = React.createClass({
     nHawks["Test"][sessionID] = { sessionID : sessionID };
 
     this.setState( { datas : nDatas, hawks : nHawks });
+  },
+  handleExport : function() {
+
+    // this should db.once("value") to get the data to download.
+    // or at least give options to download specific parts of data.
+    var file = utils.getCSV(this.state.datas),
+        aSessions = document.createElement('a'),
+        aMarks = document.createElement('a');
+
+
+    aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
+    aSessions.download = "sessions.csv";
+    document.body.appendChild(aSessions);
+    aSessions.click();
+    document.body.removeChild(aSessions);
+
+    aMarks.href = window.URL.createObjectURL(new Blob([file.marks], { type : "text/csv" }));
+    aMarks.download = "marks.csv";
+    document.body.appendChild(aMarks);
+    aMarks.click();
+    document.body.removeChild(aMarks);
   },
   render : function() {
     var items = [];
@@ -280,7 +303,7 @@ App = React.createClass({
 
     return (
       <div>
-        <Header options={this.state.options} onOptionChange={this.onOptionChange} testAdd={this.testAdd} />
+        <Header options={this.state.options} onOptionChange={this.onOptionChange} testAdd={this.testAdd} handleExport={this.handleExport}/>
         <ReactCSSTransitionGroup component="div" transitionName="marks" className="container-fluid">
           {items}
         </ReactCSSTransitionGroup>

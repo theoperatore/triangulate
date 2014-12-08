@@ -20183,11 +20183,70 @@ module.exports = warning;
 
 }).call(this,require('_process'))
 },{"./emptyFunction":124,"_process":1}],164:[function(require,module,exports){
+///////////////////////////////////////////////////////////////////////////////
+//
+// Utility functions for the admin page
+// 
+///////////////////////////////////////////////////////////////////////////////
+"use strict";
+
+/****************************************************************************
+*
+* Function that takes a data object full of hawk data, and returns 2 CSV
+* formatted strings--one for each session, and one containing sessionID and
+* mark data.
+*
+* -- Session List --
+* 
+* SessionID, HawkID, MarkListID, CenterLatitude, CenterLongitude, Diameter
+*
+* -- Mark List --
+*
+* MarkListID, DateTaken, Latitude, Longitude, SignalStrength, Azimuth
+****************************************************************************/
+exports.getCSV = function(data) {
+  var sessions = "SessionID, HawkID, MarkListID, CenterLatitude, CenterLongitude, Diameter\n",
+      marks = "MarkListID, DateTaken, Latitude, Longitude, SignalStrength, Azimuth\n";
+
+  Object.keys(data).forEach(function(key) {
+    var session = data[key];
+
+    sessions += session.sessionID + "," +
+                session.hawkID    + "," +
+                session.sessionID;
+
+    if (session.triCenter) {
+      sessions += "," + session.triCenter.lat +
+                  "," + session.triCenter.lng +
+                  "," + session.triDiameter;
+    }
+
+    sessions += "\n";
+
+    // add this session's marks to the CSV string
+    Object.keys(session.marks).forEach(function(mkey) {
+      var mark = session.marks[mkey];
+
+      marks += session.sessionID + "," +
+               mark.date         + "," +
+               mark.lat          + "," +
+               mark.lng          + "," +
+               mark.sig          + "," +
+               mark.az           + "\n";
+    });
+
+  });
+
+
+  return { sessions : sessions, marks : marks };
+}
+},{}],165:[function(require,module,exports){
 /** @jsx React.DOM */
 var React = require('react/addons'),
     Firebase = require('firebase'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/data-beta"),
     hawksdb = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
+    utils = require('./admin-scripts/utils'),
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup,
     App, Header, Session, Hawk;
 
@@ -20200,7 +20259,9 @@ Header = React.createClass({
     var out = (this.props.options.sort === "hawkid") ? "session" : "hawkid";
     this.props.onOptionChange({ sort : out });
   },
-  handleExport : function() {},
+  handleExport : function() {
+    this.props.handleExport();
+  },
   handleArchive : function() {},
   testAdd : function() {
     this.props.testAdd();
@@ -20414,7 +20475,6 @@ App = React.createClass({
       this.setState({ hawks : hawks });
 
     }.bind(this));
-
   },
   onOptionChange : function(options) {
     this.setState({ options : options });
@@ -20435,6 +20495,27 @@ App = React.createClass({
     nHawks["Test"][sessionID] = { sessionID : sessionID };
 
     this.setState( { datas : nDatas, hawks : nHawks });
+  },
+  handleExport : function() {
+
+    // this should db.once("value") to get the data to download.
+    // or at least give options to download specific parts of data.
+    var file = utils.getCSV(this.state.datas),
+        aSessions = document.createElement('a'),
+        aMarks = document.createElement('a');
+
+
+    aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
+    aSessions.download = "sessions.csv";
+    document.body.appendChild(aSessions);
+    aSessions.click();
+    document.body.removeChild(aSessions);
+
+    aMarks.href = window.URL.createObjectURL(new Blob([file.marks], { type : "text/csv" }));
+    aMarks.download = "marks.csv";
+    document.body.appendChild(aMarks);
+    aMarks.click();
+    document.body.removeChild(aMarks);
   },
   render : function() {
     var items = [];
@@ -20465,7 +20546,7 @@ App = React.createClass({
 
     return (
       React.createElement("div", null, 
-        React.createElement(Header, {options: this.state.options, onOptionChange: this.onOptionChange, testAdd: this.testAdd}), 
+        React.createElement(Header, {options: this.state.options, onOptionChange: this.onOptionChange, testAdd: this.testAdd, handleExport: this.handleExport}), 
         React.createElement(ReactCSSTransitionGroup, {component: "div", transitionName: "marks", className: "container-fluid"}, 
           items
         )
@@ -20476,4 +20557,4 @@ App = React.createClass({
 
 
 React.render(React.createElement(App, null), document.body);
-},{"firebase":2,"react/addons":3}]},{},[164]);
+},{"./admin-scripts/utils":164,"firebase":2,"react/addons":3}]},{},[165]);
