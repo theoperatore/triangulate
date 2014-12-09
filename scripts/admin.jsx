@@ -47,7 +47,7 @@ Hawk = React.createClass({
     // loop through this.props.sessions keys to get indexes
     // into this.props.datas for info.
     Object.keys(this.props.sessions).forEach(function(key, s) {
-      var data = this.props.datas[this.props.sessions[key].sessionID],
+      var data = this.props.datas[this.props.sessions[key].sessionID] || {},
           marks = [];
 
       // find marks data
@@ -63,53 +63,52 @@ Hawk = React.createClass({
             </tr>
           );
         }.bind(this));
+
+        // set up each session
+        sessions.unshift(
+          <div className="row" key={s}>
+            <div className="container-fluid">
+              <h3>{new Date(data.sessionID).toLocaleString()} <small>{data.sessionID}</small></h3>
+            </div>
+            <div className="col-md-6">
+              <table className="table">
+                <caption>Saved Marks</caption>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Azimuth</th>
+                    <th>Signal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marks}
+                </tbody>
+              </table>
+            </div>
+            <div className="col-md-6">
+              <table className="table">
+                <caption>Triangulation Info</caption>
+                <thead>
+                  <tr>
+                    <th>Diameter(m)</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{data.triDiameter || "N/A"}</td>
+                    <td>{(data.triCenter) ? data.triCenter.lat : "N/A"}</td>
+                    <td>{(data.triCenter) ? data.triCenter.lng : "N/A"}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
       }
-
-      // set up each session
-      sessions.unshift(
-        <div className="row" key={s}>
-          <div className="container-fluid">
-            <h3>{new Date(data.sessionID).toLocaleString()} <small>{data.sessionID}</small></h3>
-          </div>
-          <div className="col-md-6">
-            <table className="table">
-              <caption>Saved Marks</caption>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Latitude</th>
-                  <th>Longitude</th>
-                  <th>Azimuth</th>
-                  <th>Signal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {marks}
-              </tbody>
-            </table>
-          </div>
-          <div className="col-md-6">
-            <table className="table">
-              <caption>Triangulation Info</caption>
-              <thead>
-                <tr>
-                  <th>Diameter(m)</th>
-                  <th>Latitude</th>
-                  <th>Longitude</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{data.triDiameter || "N/A"}</td>
-                  <td>{(data.triCenter) ? data.triCenter.lat : "N/A"}</td>
-                  <td>{(data.triCenter) ? data.triCenter.lng : "N/A"}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      );
-
 
     }.bind(this));
 
@@ -127,9 +126,6 @@ Hawk = React.createClass({
 });
 
 // handles rendering one session
-//
-// onChange events from firebase to be handled here? for marks change/child added?
-//
 Session = React.createClass({
   displayName : "Session",
   render : function() {
@@ -216,17 +212,31 @@ App = React.createClass({
         hawks = {};
 
     // set up state with data
-    db.on("child_added", function(data) {
+    db.orderByKey().limitToLast(10).on("child_added", function(data) {
       
-      datas[data.name()] = data.val();
+      datas[data.key()] = data.val();
+      this.setState({ datas : datas });
+
+    }.bind(this));
+
+    db.on("child_removed", function(data) {
+      
+      delete datas[data.key()];
       this.setState({ datas : datas });
 
     }.bind(this));
 
     // set up state with hawks
-    hawksdb.on("child_added", function(hawk) {
+    hawksdb.orderByKey().limitToLast(5).on("child_added", function(hawk) {
 
-      hawks[hawk.name()] = hawk.val();
+      hawks[hawk.key()] = hawk.val();
+      this.setState({ hawks : hawks });
+
+    }.bind(this));
+
+    hawksdb.on("child_removed", function(hawk) {
+
+      delete hawks[hawk.key()];
       this.setState({ hawks : hawks });
 
     }.bind(this));
