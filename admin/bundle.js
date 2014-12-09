@@ -20262,7 +20262,6 @@ Header = React.createClass({
   handleExport : function() {
     this.props.handleExport();
   },
-  handleArchive : function() {},
   testAdd : function() {
     this.props.testAdd();
   },
@@ -20275,8 +20274,7 @@ Header = React.createClass({
         React.createElement("ul", {className: "nav nav-pills pull-right", role: "navigation"}, 
           React.createElement("li", null, React.createElement("button", {onClick: this.testAdd, className: "btn btn-danger btn-lg"}, "Test Add")), 
           React.createElement("li", {role: "presentation"}, React.createElement("button", {onClick: this.handleSort, title: "Sort by HawkID", className: sortClass}, React.createElement("span", {className: "glyphicon glyphicon-th-large"}))), 
-          React.createElement("li", {role: "presentation"}, React.createElement("button", {onClick: this.handleExport, title: "Export from Database", className: "btn btn-default btn-lg"}, React.createElement("span", {className: "glyphicon glyphicon-save"}))), 
-          React.createElement("li", {role: "presentation"}, React.createElement("button", {onClick: this.handleArchive, title: "Archive", className: "btn btn-default btn-lg"}, React.createElement("span", {className: "glyphicon glyphicon-folder-close"})))
+          React.createElement("li", {role: "presentation"}, React.createElement("button", {onClick: this.handleExport, title: "Export from Database", className: "btn btn-default btn-lg"}, React.createElement("span", {className: "glyphicon glyphicon-save"})))
         )
       ));
   }

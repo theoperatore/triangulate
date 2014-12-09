@@ -19,7 +19,6 @@ Header = React.createClass({
   handleExport : function() {
     this.props.handleExport();
   },
-  handleArchive : function() {},
   testAdd : function() {
     this.props.testAdd();
   },
@@ -33,7 +32,6 @@ Header = React.createClass({
           <li><button onClick={this.testAdd} className={"btn btn-danger btn-lg"}>Test Add</button></li>
           <li role="presentation"><button onClick={this.handleSort} title="Sort by HawkID" className={sortClass}><span className="glyphicon glyphicon-th-large"></span></button></li>
           <li role="presentation"><button onClick={this.handleExport} title="Export from Database" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-save"></span></button></li>
-          <li role="presentation"><button onClick={this.handleArchive} title="Archive" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-folder-close"></span></button></li>
         </ul>
       </header>);
   }
