@@ -21718,7 +21718,7 @@ App = React.createClass({
     // set up state with marks being added?
     db.orderByKey().limitToLast(10).on("child_added", function(data) {
 
-      if (this.state.count < 7) {
+      if (this.state.count < 10) {
         console.log("adding to current", "key:",data.key(), "data:", data.val());
         datas[data.key()] = data.val();
         this.setState({ datas : datas, count : this.state.count + 1 });
@@ -21728,6 +21728,15 @@ App = React.createClass({
         pending[data.key()] = data.val();
         this.setState({ num : this.state.num + 1, pending : pending });
       }  
+
+    }.bind(this));
+
+    // update children
+    db.on("child_changed", function(data) {
+
+      console.log("child_changed", data.key(), data.val());
+      datas[data.key()] = data.val();
+      this.setState({ datas : datas });
 
     }.bind(this));
 
