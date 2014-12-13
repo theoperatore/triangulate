@@ -9,7 +9,7 @@ var Download = React.createClass({
       return (
         <Modal {...this.props} title="Download!">
           <div className="modal-body">
-            <h4>Download Options!</h4>
+            
             <p><Button onClick={this.props.testDownloadMarks} bsStyle="info">Test Download Marks</Button></p>
             <p><Button onClick={this.props.testDownloadSessions} bsStyle="info">Test Download Sessions</Button></p>
           </div>

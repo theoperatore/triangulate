@@ -299,25 +299,38 @@ App = React.createClass({
     this.setState({ num : 0, count : 0, pending : {}, datas : datas });
   },
   handleExportMarks : function() {
-    var file = utils.getCSV(this.state.datas),
+    var all = {};
+    db.once("value", function(data) {
+      Object.keys(data.val()).forEach(function(key) {
+        all[key] = data.val()[key];
+      });
+
+      var file = utils.getCSV(all),
         aMarks = document.createElement('a');
 
-    aMarks.href = window.URL.createObjectURL(new Blob([file.marks], { type : "text/csv" }));
-    aMarks.download = "marks.csv";
-    document.body.appendChild(aMarks);
-    aMarks.click();
-    document.body.removeChild(aMarks);
+      aMarks.href = window.URL.createObjectURL(new Blob([file.marks], { type : "text/csv" }));
+      aMarks.download = "marks.csv";
+      document.body.appendChild(aMarks);
+      aMarks.click();
+      document.body.removeChild(aMarks);
+    });
   },
   handleExportSessions : function() {
-    var file = utils.getCSV(this.state.datas),
+    var all = {};
+    db.once("value", function(data) {
+      Object.keys(data.val()).forEach(function(key) {
+        all[key] = data.val()[key];
+      });
+
+      var file = utils.getCSV(all),
         aSessions = document.createElement('a');
 
-    aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
-    aSessions.download = "sessions.csv";
-    document.body.appendChild(aSessions);
-    aSessions.click();
-    document.body.removeChild(aSessions);
-
+      aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
+      aSessions.download = "sessions.csv";
+      document.body.appendChild(aSessions);
+      aSessions.click();
+      document.body.removeChild(aSessions);
+    });
   },
   render : function() {
     var items = [];
