@@ -79,8 +79,8 @@ Hawk = React.createClass({
             <div className="container-fluid">
               <h3>{new Date(data.sessionID).toLocaleString()} <small>{data.sessionID}</small></h3>
             </div>
-            <div className="col-md-6">
-              <table className="table">
+            <div className="col-md-6 table-responsive">
+              <table className="table table-hover">
                 <caption>Saved Marks</caption>
                 <thead>
                   <tr>
@@ -96,8 +96,8 @@ Hawk = React.createClass({
                 </tbody>
               </table>
             </div>
-            <div className="col-md-6">
-              <table className="table">
+            <div className="col-md-6 table-responsive">
+              <table className="table table-hover">
                 <caption>Triangulation Info</caption>
                 <thead>
                   <tr>
@@ -174,8 +174,8 @@ Session = React.createClass({
         </div>
         <div className="panel-body">  
           <div className="row">
-            <div className="col-md-6">
-              <table className="table">
+            <div className="col-md-6 table-responsive">
+              <table className="table table-hover">
                 <caption>Saved Marks</caption>
                 <thead>
                   <tr>
@@ -191,8 +191,8 @@ Session = React.createClass({
                 </tbody>
               </table>
             </div>
-            <div className="col-md-6">
-              <table className="table">
+            <div className="col-md-6 table-responsive">
+              <table className="table table-hover">
                 <caption>Triangulation Info</caption>
                 <thead>
                   <tr>

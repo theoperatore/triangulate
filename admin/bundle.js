@@ -21556,8 +21556,8 @@ Hawk = React.createClass({
             React.createElement("div", {className: "container-fluid"}, 
               React.createElement("h3", null, new Date(data.sessionID).toLocaleString(), " ", React.createElement("small", null, data.sessionID))
             ), 
-            React.createElement("div", {className: "col-md-6"}, 
-              React.createElement("table", {className: "table"}, 
+            React.createElement("div", {className: "col-md-6 table-responsive"}, 
+              React.createElement("table", {className: "table table-hover"}, 
                 React.createElement("caption", null, "Saved Marks"), 
                 React.createElement("thead", null, 
                   React.createElement("tr", null, 
@@ -21573,8 +21573,8 @@ Hawk = React.createClass({
                 )
               )
             ), 
-            React.createElement("div", {className: "col-md-6"}, 
-              React.createElement("table", {className: "table"}, 
+            React.createElement("div", {className: "col-md-6 table-responsive"}, 
+              React.createElement("table", {className: "table table-hover"}, 
                 React.createElement("caption", null, "Triangulation Info"), 
                 React.createElement("thead", null, 
                   React.createElement("tr", null, 
@@ -21651,8 +21651,8 @@ Session = React.createClass({
         ), 
         React.createElement("div", {className: "panel-body"}, 
           React.createElement("div", {className: "row"}, 
-            React.createElement("div", {className: "col-md-6"}, 
-              React.createElement("table", {className: "table"}, 
+            React.createElement("div", {className: "col-md-6 table-responsive"}, 
+              React.createElement("table", {className: "table table-hover"}, 
                 React.createElement("caption", null, "Saved Marks"), 
                 React.createElement("thead", null, 
                   React.createElement("tr", null, 
@@ -21668,8 +21668,8 @@ Session = React.createClass({
                 )
               )
             ), 
-            React.createElement("div", {className: "col-md-6"}, 
-              React.createElement("table", {className: "table"}, 
+            React.createElement("div", {className: "col-md-6 table-responsive"}, 
+              React.createElement("table", {className: "table table-hover"}, 
                 React.createElement("caption", null, "Triangulation Info"), 
                 React.createElement("thead", null, 
                   React.createElement("tr", null, 
