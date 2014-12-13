@@ -5,6 +5,8 @@ var React = require('react/addons'),
     hawksdb = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
     utils = require('./admin-scripts/utils'),
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup,
+    Download = require('./admin-scripts/download'),
+    ModalTrigger = require('react-bootstrap/ModalTrigger'),
     App, Header, Session, Hawk;
 
 
@@ -19,8 +21,14 @@ Header = React.createClass({
   handleExport : function() {
     this.props.handleExport();
   },
-  testAdd : function() {
-    this.props.testAdd();
+  handleRefresh : function() {
+    this.props.onRefresh();
+  },
+  handleExportMarks : function() {
+    this.props.handleExportMarks();
+  },
+  handleExportSessions : function() {
+    this.props.handleExportSessions();
   },
   render : function() {
     var sortClass = "btn btn-lg";
@@ -29,9 +37,9 @@ Header = React.createClass({
       <header className="container-fluid page-header clearfix">
         <h1 className="pull-left">Tri-hawk-ulate <small>admin</small></h1>
         <ul className="nav nav-pills pull-right" role="navigation">
-          <li><button onClick={this.testAdd} className={"btn btn-danger btn-lg"}>Test Add</button></li>
           <li role="presentation"><button onClick={this.handleSort} title="Sort by HawkID" className={sortClass}><span className="glyphicon glyphicon-th-large"></span></button></li>
-          <li role="presentation"><button onClick={this.handleExport} title="Export from Database" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-save"></span></button></li>
+          <li role="presentation"><button onClick={this.handleRefresh} title="Refresh" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-refresh"></span><span className="badge">{this.props.numNewDatas || ""}</span></button></li>
+          <li role="presentation"><ModalTrigger modal={<Download testDownloadMarks={this.handleExportMarks} testDownloadSessions={this.handleExportSessions}/>}><button title="Export from Database" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-save"></span></button></ModalTrigger></li>
         </ul>
       </header>);
   }
@@ -42,7 +50,8 @@ Hawk = React.createClass({
   displayName : "Hawk Group",
   render : function() {
 
-    var sessions = [];
+    var sessions = [],
+        container;
 
     // loop through this.props.sessions keys to get indexes
     // into this.props.datas for info.
@@ -111,16 +120,29 @@ Hawk = React.createClass({
       }
 
     }.bind(this));
+  
+
+    if (sessions.length === 0) {
+      container = (<div></div>);
+    }
+    else {
+      container = (
+        <div className={"panel panel-info"}>
+          <div className="panel-heading">
+            <h3 className="panel-title">{this.props.hawkid.replace("_",".")}</h3>
+          </div>
+          <div className="panel-body">
+            {sessions}
+          </div>
+        </div>
+      );
+    }
+
 
     return (
-      <div className="panel panel-info">
-        <div className="panel-heading">
-          <h3 className="panel-title">{this.props.hawkid.replace("_",".")}</h3>
+        <div>
+          {container}
         </div>
-        <div className="panel-body">
-          {sessions}
-        </div>
-      </div>
     );
   }
 });
@@ -204,39 +226,48 @@ App = React.createClass({
         sort : "session"
       },
       datas : {},
-      hawks : {}
+      hawks : {},
+      pending : {},
+      num : 0,
+      count : 0,
+      refreshed : true
     });
   },
   componentWillMount: function () {
-    var datas = {},
-        hawks = {};
+    var datas = this.state.datas,
+        hawks = this.state.hawks,
+        pending = this.state.pending;
 
-    // set up state with data
+    // set up state with marks being added?
     db.orderByKey().limitToLast(10).on("child_added", function(data) {
-      
-      datas[data.key()] = data.val();
-      this.setState({ datas : datas });
+
+      if (this.state.count < 7) {
+        console.log("adding to current", "key:",data.key(), "data:", data.val());
+        datas[data.key()] = data.val();
+        this.setState({ datas : datas, count : this.state.count + 1 });
+      }
+      else {
+        console.log("adding to pending","key:",data.key(),"data:", data.val());
+        pending[data.key()] = data.val();
+        this.setState({ num : this.state.num + 1, pending : pending });
+      }  
 
     }.bind(this));
 
+    // handle a new hawk moving into view
     db.on("child_removed", function(data) {
       
+      console.log("child_removed:", data.key(), data.val());
       delete datas[data.key()];
       this.setState({ datas : datas });
 
     }.bind(this));
 
-    // set up state with hawks
-    hawksdb.orderByKey().limitToLast(5).on("child_added", function(hawk) {
-
+    // set up state with hawks--grab all
+    // and we'll only show the hawks fow which we have grabbed sessions.
+    hawksdb.on("child_added", function(hawk) {
+      console.log("child_added_hawksdb",hawk.key(), hawk.val());
       hawks[hawk.key()] = hawk.val();
-      this.setState({ hawks : hawks });
-
-    }.bind(this));
-
-    hawksdb.on("child_removed", function(hawk) {
-
-      delete hawks[hawk.key()];
       this.setState({ hawks : hawks });
 
     }.bind(this));
@@ -244,37 +275,23 @@ App = React.createClass({
   onOptionChange : function(options) {
     this.setState({ options : options });
   },
-  testAdd : function() {
-    var nDatas = this.state.datas,
-        nHawks = this.state.hawks,
-        sessionID = +new Date;
+  onRefresh : function() {
+    var pending = this.state.pending,
+        datas = this.state.datas;
 
-    nDatas[sessionID] = {
-      hawkID : "Test",
-      sessionID : sessionID
-    };
+    // merge pending data with datas
+    Object.keys(pending).forEach(function(key) {
 
-    if (!nHawks["Test"]){
-      nHawks["Test"] = {};
-    } 
-    nHawks["Test"][sessionID] = { sessionID : sessionID };
+      datas[key] = pending[key];
 
-    this.setState( { datas : nDatas, hawks : nHawks });
+    }.bind(this));
+
+    console.log("refreshing...");
+    this.setState({ num : 0, count : 0, pending : {}, datas : datas });
   },
-  handleExport : function() {
-
-    // this should db.once("value") to get the data to download.
-    // or at least give options to download specific parts of data.
+  handleExportMarks : function() {
     var file = utils.getCSV(this.state.datas),
-        aSessions = document.createElement('a'),
         aMarks = document.createElement('a');
-
-
-    aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
-    aSessions.download = "sessions.csv";
-    document.body.appendChild(aSessions);
-    aSessions.click();
-    document.body.removeChild(aSessions);
 
     aMarks.href = window.URL.createObjectURL(new Blob([file.marks], { type : "text/csv" }));
     aMarks.download = "marks.csv";
@@ -282,28 +299,39 @@ App = React.createClass({
     aMarks.click();
     document.body.removeChild(aMarks);
   },
+  handleExportSessions : function() {
+    var file = utils.getCSV(this.state.datas),
+        aSessions = document.createElement('a');
+
+    aSessions.href = window.URL.createObjectURL(new Blob([file.sessions], { type : "text/csv" }));
+    aSessions.download = "sessions.csv";
+    document.body.appendChild(aSessions);
+    aSessions.click();
+    document.body.removeChild(aSessions);
+
+  },
   render : function() {
     var items = [];
 
     // show session component for session sort
     if (this.state.options.sort === "session") {
 
-      Object.keys(this.state.datas).forEach(function(key) {
+      Object.keys(this.state.datas).forEach(function(key, i) {
 
         // use unshift to both keep sessions in descending order, 
         // and so transitions happen correctly.
         items.unshift(
-          <Session session={this.state.datas[key]} key={key} />
+          <Session session={this.state.datas[key]} key={"session" + key + i} />
         );
       }.bind(this));
     }
 
     // show hawk component for hawk sort
     else if (this.state.options.sort === "hawkid") {
-      Object.keys(this.state.hawks).forEach(function(key) {
+      Object.keys(this.state.hawks).forEach(function(key, i) {
 
         items.unshift(
-          <Hawk hawkid={key} datas={this.state.datas} sessions={this.state.hawks[key]} key={key}/>
+          <Hawk hawkid={key} datas={this.state.datas} sessions={this.state.hawks[key]} key={"hawkid" + key + i}/>
         );
 
       }.bind(this));
@@ -311,10 +339,12 @@ App = React.createClass({
 
     return (
       <div>
-        <Header options={this.state.options} onOptionChange={this.onOptionChange} testAdd={this.testAdd} handleExport={this.handleExport}/>
+        <Header handleExportMarks={this.handleExportMarks} handleExportSessions={this.handleExportSessions} numNewDatas={this.state.num} options={this.state.options} onRefresh={this.onRefresh} onOptionChange={this.onOptionChange} testAdd={this.testAdd}/>
+        <div className="container-fluid">
         <ReactCSSTransitionGroup component="div" transitionName="marks" className="container-fluid">
           {items}
         </ReactCSSTransitionGroup>
+        </div>
       </div>
     );
   }

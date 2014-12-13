@@ -20,10 +20,10 @@ var btn = document.getElementById('saveMe'),
 ****************************************************************************/
 exports.init = function() {
   btn.addEventListener('click', function() {
-    alert(
-      "I'm the save indicator! I'm sure I'll be more usefull in the future..." + 
-      "but for now:\nGreen === GOOD\nRed === BAD"
-    );
+    //alert(
+    //  "I'm the save indicator! I'm sure I'll be more usefull in the future..." + 
+    //  "but for now:\nGreen === GOOD\nRed === BAD"
+    //);
   });
 };
 
