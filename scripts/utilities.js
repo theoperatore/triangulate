@@ -55,9 +55,13 @@ exports.computeCenter = function(map, edges) {
 // Returns the corresponding LatLng object of the intersection point.
 //
 //
-// TODO: Should update to sort lines in order clockwise or counter.
+// needs to check if computer points lie in the range denoted by the points
+// also needs to account for "bottom" being 0 meaning the two lines are
+// parallel
 //
-exports.intersects = function(map, lat1,lat2, lat3,lat4) {
+// This method assumes each line segment is actually a line
+//
+exports.intersectsByDeterminants = function(map, lat1,lat2, lat3,lat4) {
   var bottom, x,y, p1,p2,p3,p4, out;
 
   // convert LatLng to points
@@ -73,8 +77,54 @@ exports.intersects = function(map, lat1,lat2, lat3,lat4) {
   x = x / bottom;
   y = y / bottom;
 
+  // return the intersection point
   out = new google.maps.Point(x,y);
   return map.getProjection().fromPointToLatLng(out);
+  
+}
+
+//
+// Tries to compute the intersection point of two line segments by solving
+// a linear combination.
+//
+// Returns the corresponding LatLng object of the intersection point,
+// or false if there is no intersection either by parallel, coincidental, or by
+// the intersection not occurring within the line segments.
+//
+exports.intersectsByLinearAlgebra = function(map, lat1,lat2, lat3,lat4) {
+  var bottom, x,y, p1,p2,p3,p4, ua, ub, out;
+
+  // convert LatLng to points
+  p1 = map.getProjection().fromLatLngToPoint(lat1);
+  p2 = map.getProjection().fromLatLngToPoint(lat2);
+  p3 = map.getProjection().fromLatLngToPoint(lat3);
+  p4 = map.getProjection().fromLatLngToPoint(lat4);
+
+  bottom = ((p4.y - p3.y) * (p2.x - p1.x)) - ((p4.x - p3.x) * (p2.y - p1.y));
+
+  // parallel lines if bottom is 0
+  if (bottom === 0) return false;
+
+  ua = ((p4.x - p3.x) * (p1.y - p3.y)) - ((p4.y - p3.y) * (p1.x - p3.x));
+  ub = ((p2.x - p1.x) * (p1.y - p3.y)) - ((p2.y - p1.y) * (p1.x - p3.x));
+
+  ua = ua / bottom;
+  ub = ub / bottom;
+
+  if ((0 <= ua && ua <= 1) &&
+      (0 <= ub && ub <=1)) 
+  {
+
+    x = p1.x + ua * (p2.x - p1.x);
+    y = p1.y + ua * (p2.y - p1.y);
+
+    // return the intersection point
+    out = new google.maps.Point(x,y);
+    return map.getProjection().fromPointToLatLng(out);
+  }
+
+  // otherwise, there are no intersections
+  return false;  
   
 }
 
@@ -96,12 +146,29 @@ exports.computeHeadings = function(origin, azimuth, dist) {
 }
 
 //
+// Given an origin LatLng object, a heading, and a distance, returns
+// a LatLng point projected along the azimuth line a given distance away from
+// the origin
+//
+exports.computePositiveHeading = function(origin, azimuth, dist) {
+  var positive, negative, dir;
+  azimuth = (azimuth >= 360) ? azimuth - 360 : azimuth;
+
+  dir = 180 + azimuth;
+  dir = (dir >= 360) ? dir - 360 : dir;
+
+  positive = google.maps.geometry.spherical.computeOffset(origin, dist, azimuth);
+
+  return positive;
+}
+
+//
 // param:
 //  - coords.latitude
 //  - coords.longitude
 //
 // returns:
-//  - string in Degrees, Minutes, Seconds with direction
+//  - html string in Degrees, Minutes, Seconds with direction
 //
 exports.convertToDMS = function(coords) {
 

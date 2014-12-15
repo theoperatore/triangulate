@@ -70,29 +70,48 @@ function triangulate() {
   var center, radius,
       triInfo = new google.maps.InfoWindow();
 
-  console.log('triangulating...');
-
   // find intersects
   console.log("sorting", app.marks);
   app.marks.sort(sorting);
   console.log("finished sorting", app.marks);
 
   app.intersects.length = 0;
-  for (var i = 0, pos1, pos2, headings1, headings2, c, n; i < app.marks.length; i++) {
+  for (var i = 0,pos1,pos2,headings1,headings2,c,n,intersect; i < app.marks.length; i++) {
     c = app.marks[i];
     n = app.marks[((i + 1) % app.marks.length)];
 
+    // marker positions
     pos1 = c.m.getPosition();
     pos2 = n.m.getPosition();
-    headings1 = utils.computeHeadings(pos1, c.az, opts.azDist);
-    headings2 = utils.computeHeadings(pos2, n.az, opts.azDist);
+    
+    // compute headings in both directions; create a line along azimuth
+    //headings1 = utils.computeHeadings(pos1, c.az, opts.azDist);
+    //headings2 = utils.computeHeadings(pos2, n.az, opts.azDist);
 
-    app.intersects.push(utils.intersects(
+    //app.intersects.push(utils.intersectsByDeterminants(
+    //  map,
+    //  headings1[0], headings1[1],
+    //  headings2[0], headings2[1] 
+    //));
+    
+    // compute only the heading in the direction of the azimuth
+    headings1 = utils.computePositiveHeading(pos1, c.az, opts.azDist);
+    headings2 = utils.computePositiveHeading(pos2, n.az, opts.azDist);
+
+    intersect = utils.intersectsByLinearAlgebra(
       map,
-      headings1[0], headings1[1],
-      headings2[0], headings2[1] 
-    ));
+      pos1, headings1,
+      pos2, headings2
+    );
+
+    // only add to list if valid intersect
+    if (intersect === false) continue;
+    app.intersects.push(intersect);
+    
   }
+
+  // stop trying to triangulate if there aren't enough intersects to use.
+  if (app.intersects.length < 3) return;
 
   // find center of computed intersects
   center = utils.computeCenter(map, app.intersects);
@@ -201,11 +220,12 @@ function added(markSnap) {
 
   // compute az headings from m.lat, m.lng, m.az, and opts.azDist
   pos = new google.maps.LatLng(m.lat, m.lng);
-  headings = utils.computeHeadings(pos, m.az, opts.azDist);
+  //headings = utils.computeHeadings(pos, m.az, opts.azDist);
+  headings = utils.computePositiveHeading(pos, m.az, opts.azDist);
 
   // use headings to display polyline
   line = new google.maps.Polyline({
-    path : headings,
+    path : [pos, headings],
     strokeColor: "#00aeff",
     strokeOpacity: 0.8,
     strokeWeight: 4,
@@ -221,7 +241,7 @@ function added(markSnap) {
     m : mark,
     l : line,
     i : info,
-    id: markSnap.name(),
+    id: markSnap.key(),
     az : m.az,
     sig : m.sig,
     date : m.date

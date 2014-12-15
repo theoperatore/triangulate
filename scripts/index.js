@@ -16,7 +16,7 @@ var cvs = document.getElementById('map-canvas'),
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.7.07";
+    version = "0.8.07";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
@@ -52,6 +52,9 @@ if (app.sessionID === void(0) || isNaN(app.sessionID)) {
   localStorage.setItem("tri-hawk-ulate__sessionID", app.sessionID);
   document.getElementById('modal-hawkid').classList.remove('hide');
 }
+
+// TODO: Add onTap/click handler to map.
+// allows user to tap the map and set app.curr to the tapped location.
 
 // set up other parts of the app
 dbHandler.init(app, db, map, opts);
