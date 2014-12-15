@@ -18,33 +18,14 @@ exports.computeRadius = function(edges) {
 
 //
 // Given an array of coordinates, returns the coordinates of the center.
-// This algorithm assumes that the points are given in order, either 
-// clockwise or counterclockwise.
 // 
 exports.computeCenter = function(map, edges) {
-  var area = x = y = 0, out;
-
-  for (var i = 0, curr, next; i < edges.length; i++) {
-    curr = map.getProjection().fromLatLngToPoint(edges[i]);
-    next = map.getProjection().fromLatLngToPoint(edges[((i+1)%edges.length)]);
-
-    // sum coords
-    x += (curr.x + next.x) * ((curr.x * next.y) - (next.x * curr.y));
-    y += (curr.y + next.y) * ((curr.x * next.y) - (next.x * curr.y));
-
-    // sum area
-    area += ((curr.x * next.y) - (next.x * curr.y));
+  var bounds = new google.maps.LatLngBounds();
+  for (var i = 0; i < edges.length; i++) {
+    bounds.extend(edges[i]);
   }
 
-  // compute final area
-  area *= 0.5;
-
-  // compute final coords
-  x *= (1 / (6 * area));
-  y *= (1 / (6 * area));
-
-  out = new google.maps.Point(x,y);
-  return map.getProjection().fromPointToLatLng(out);
+  return bounds.getCenter();
 }
 
 //

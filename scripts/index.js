@@ -16,7 +16,7 @@ var cvs = document.getElementById('map-canvas'),
       azDist : 4828.03, // 3 miles in either direction
       unlocked : true
     },
-    version = "0.8.07";
+    version = "0.8.10";
 
 // do a little viewport styling for our map/app
 cvs.style.width = window.innerWidth + "px";
