@@ -5,6 +5,7 @@
   "main": "scripts/index.js",
   "scripts": {
     "test": "beefy scripts/index.js:bundle.js",
+    "dev" : "browserify -t reactify ./scripts/index-updated.js -o bundle.js && beefy",
     "admin": "browserify -t reactify ./scripts/admin.jsx -o admin/bundle.js && beefy",
     "deploy": "browserify scripts/index.js | uglifyjs -o bundle.min.js"
   },

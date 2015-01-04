@@ -1,14 +1,53 @@
-* {
-  padding:0;
-  margin:0
-}
-
 body {
   font-family:"Helvetica", arial, sans-serif;
 }
-#map-canvas {
-  top:0;
-  left:0;
+
+
+html, body {
+  height:100%;
+}
+
+#content-map-canvas {
+}
+
+#content {
+  background-color: rgba(255, 255, 255 , 1);
+}
+
+.btn-group>.btn-lg {
+  border-radius: 0px !important;
+  border: none;
+  height:50px;
+}
+
+.main-menu {
+  height: 50px;
+}
+
+.inverse {
+  background-color: rgba(21, 21, 21, 1);
+  color: rgba(221, 221, 221, 1);
+}
+.inverse a, .inverse a:link, .inverse a:visited {
+  color :rgba(52, 152, 219, 1);
+}
+.inverse .list-group-item {
+  background-color: rgba(48, 48, 48, 1);
+  border: 1px solid rgba(70, 69, 69, 1);
+}
+
+.nameless, .nameless:link, .nameless:visited {
+  color : rgba(221, 221, 221, 1);
+  text-decoration: none;
+}
+
+.nameless:hover {
+  text-decoration: none;
+  color: rgba(221, 221, 221, 1);
+}
+
+.settings {
+  width: 266px;
 }
 
 .hide { display: none;}
@@ -54,8 +93,8 @@ body {
 .center { text-align: center; }
 
 #settings-toggle {
-  margin: 15px;
-  width: 1.5em;
+  margin-top: 10px;
+  margin-right: 15px;
   float:right;
 }
 #hawkID-display {

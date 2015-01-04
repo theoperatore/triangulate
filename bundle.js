@@ -6,6 +6,8 @@ var process = module.exports = {};
 process.nextTick = (function () {
     var canSetImmediate = typeof window !== 'undefined'
     && window.setImmediate;
+    var canMutationObserver = typeof window !== 'undefined'
+    && window.MutationObserver;
     var canPost = typeof window !== 'undefined'
     && window.postMessage && window.addEventListener
     ;
@@ -14,8 +16,29 @@ process.nextTick = (function () {
         return function (f) { return window.setImmediate(f) };
     }
 
+    var queue = [];
+
+    if (canMutationObserver) {
+        var hiddenDiv = document.createElement("div");
+        var observer = new MutationObserver(function () {
+            var queueList = queue.slice();
+            queue.length = 0;
+            queueList.forEach(function (fn) {
+                fn();
+            });
+        });
+
+        observer.observe(hiddenDiv, { attributes: true });
+
+        return function nextTick(fn) {
+            if (!queue.length) {
+                hiddenDiv.setAttribute('yes', 'no');
+            }
+            queue.push(fn);
+        };
+    }
+
     if (canPost) {
-        var queue = [];
         window.addEventListener('message', function (ev) {
             var source = ev.source;
             if ((source === window || source === null) && ev.data === 'process-tick') {
@@ -55,7 +78,7 @@ process.emit = noop;
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
-}
+};
 
 // TODO(shtylman)
 process.cwd = function () { return '/' };
@@ -64,268 +87,6 @@ process.chdir = function (dir) {
 };
 
 },{}],2:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var PanelGroup = require('./PanelGroup');
-
-var Accordion = React.createClass({displayName: 'Accordion',
-  render: function () {
-    return this.transferPropsTo(
-      PanelGroup( {accordion:true}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Accordion;
-},{"./PanelGroup":39,"react":206}],3:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var AffixMixin = require('./AffixMixin');
-var domUtils = require('./utils/domUtils');
-
-var Affix = React.createClass({displayName: 'Affix',
-  statics: {
-    domUtils: domUtils
-  },
-
-  mixins: [AffixMixin],
-
-  render: function () {
-    var holderStyle = {top: this.state.affixPositionTop};
-    return this.transferPropsTo(
-      React.DOM.div( {className:this.state.affixClass, style:holderStyle}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Affix;
-},{"./AffixMixin":4,"./utils/domUtils":59,"react":206}],4:[function(require,module,exports){
-/* global window, document */
-
-var React = require('react');
-var domUtils = require('./utils/domUtils');
-var EventListener = require('./utils/EventListener');
-
-var AffixMixin = {
-  propTypes: {
-    offset: React.PropTypes.number,
-    offsetTop: React.PropTypes.number,
-    offsetBottom: React.PropTypes.number
-  },
-
-  getInitialState: function () {
-    return {
-      affixClass: 'affix-top'
-    };
-  },
-
-  getPinnedOffset: function (DOMNode) {
-    if (this.pinnedOffset) {
-      return this.pinnedOffset;
-    }
-
-    DOMNode.className = DOMNode.className.replace(/affix-top|affix-bottom|affix/, '');
-    DOMNode.className += DOMNode.className.length ? ' affix' : 'affix';
-
-    this.pinnedOffset = domUtils.getOffset(DOMNode).top - window.pageYOffset;
-
-    return this.pinnedOffset;
-  },
-
-  checkPosition: function () {
-    var DOMNode, scrollHeight, scrollTop, position, offsetTop, offsetBottom,
-        affix, affixType, affixPositionTop;
-
-    // TODO: or not visible
-    if (!this.isMounted()) {
-      return;
-    }
-
-    DOMNode = this.getDOMNode();
-    scrollHeight = document.documentElement.offsetHeight;
-    scrollTop = window.pageYOffset;
-    position = domUtils.getOffset(DOMNode);
-    offsetTop;
-    offsetBottom;
-
-    if (this.affixed === 'top') {
-      position.top += scrollTop;
-    }
-
-    offsetTop = this.props.offsetTop != null ?
-      this.props.offsetTop : this.props.offset;
-    offsetBottom = this.props.offsetBottom != null ?
-      this.props.offsetBottom : this.props.offset;
-
-    if (offsetTop == null && offsetBottom == null) {
-      return;
-    }
-    if (offsetTop == null) {
-      offsetTop = 0;
-    }
-    if (offsetBottom == null) {
-      offsetBottom = 0;
-    }
-
-    if (this.unpin != null && (scrollTop + this.unpin <= position.top)) {
-      affix = false;
-    } else if (offsetBottom != null && (position.top + DOMNode.offsetHeight >= scrollHeight - offsetBottom)) {
-      affix = 'bottom';
-    } else if (offsetTop != null && (scrollTop <= offsetTop)) {
-      affix = 'top';
-    } else {
-      affix = false;
-    }
-
-    if (this.affixed === affix) {
-      return;
-    }
-
-    if (this.unpin != null) {
-      DOMNode.style.top = '';
-    }
-
-    affixType = 'affix' + (affix ? '-' + affix : '');
-
-    this.affixed = affix;
-    this.unpin = affix === 'bottom' ?
-      this.getPinnedOffset(DOMNode) : null;
-
-    if (affix === 'bottom') {
-      DOMNode.className = DOMNode.className.replace(/affix-top|affix-bottom|affix/, 'affix-bottom');
-      affixPositionTop = scrollHeight - offsetBottom - DOMNode.offsetHeight - domUtils.getOffset(DOMNode).top;
-    }
-
-    this.setState({
-      affixClass: affixType,
-      affixPositionTop: affixPositionTop
-    });
-  },
-
-  checkPositionWithEventLoop: function () {
-    setTimeout(this.checkPosition, 0);
-  },
-
-  componentDidMount: function () {
-    this._onWindowScrollListener =
-      EventListener.listen(window, 'scroll', this.checkPosition);
-    this._onDocumentClickListener =
-      EventListener.listen(document, 'click', this.checkPositionWithEventLoop);
-  },
-
-  componentWillUnmount: function () {
-    if (this._onWindowScrollListener) {
-      this._onWindowScrollListener.remove();
-    }
-
-    if (this._onDocumentClickListener) {
-      this._onDocumentClickListener.remove();
-    }
-  },
-
-  componentDidUpdate: function (prevProps, prevState) {
-    if (prevState.affixClass === this.state.affixClass) {
-      this.checkPositionWithEventLoop();
-    }
-  }
-};
-
-module.exports = AffixMixin;
-},{"./utils/EventListener":53,"./utils/domUtils":59,"react":206}],5:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-
-var Alert = React.createClass({displayName: 'Alert',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    onDismiss: React.PropTypes.func,
-    dismissAfter: React.PropTypes.number
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'alert',
-      bsStyle: 'info'
-    };
-  },
-
-  renderDismissButton: function () {
-    return (
-      React.DOM.button(
-        {type:"button",
-        className:"close",
-        onClick:this.props.onDismiss,
-        'aria-hidden':"true"}, 
-        " × "
-      )
-    );
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-    var isDismissable = !!this.props.onDismiss;
-
-    classes['alert-dismissable'] = isDismissable;
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes)}, 
-        isDismissable ? this.renderDismissButton() : null,
-        this.props.children
-      )
-    );
-  },
-
-  componentDidMount: function() {
-    if (this.props.dismissAfter && this.props.onDismiss) {
-      this.dismissTimer = setTimeout(this.props.onDismiss, this.props.dismissAfter);
-    }
-  },
-
-  componentWillUnmount: function() {
-    clearTimeout(this.dismissTimer);
-  }
-});
-
-module.exports = Alert;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],6:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var classSet = require('./utils/classSet');
-
-var Badge = React.createClass({displayName: 'Badge',
-  propTypes: {
-    pullRight: React.PropTypes.bool,
-  },
-
-  render: function () {
-    var classes = {
-      'pull-right': this.props.pullRight,
-      'badge': ValidComponentChildren.hasValidComponent(this.props.children)
-    };
-    return this.transferPropsTo(
-      React.DOM.span( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Badge;
-
-},{"./utils/ValidComponentChildren":55,"./utils/classSet":56,"react":206}],7:[function(require,module,exports){
 var React = require('react');
 var constants = require('./constants');
 
@@ -361,13 +122,11 @@ var BootstrapMixin = {
 };
 
 module.exports = BootstrapMixin;
-},{"./constants":50,"react":206}],8:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./constants":9,"react":161}],3:[function(require,module,exports){
 var React = require('react');
+var joinClasses = require('./utils/joinClasses');
 var classSet = require('./utils/classSet');
 var BootstrapMixin = require('./BootstrapMixin');
-var CustomPropTypes = require('./utils/CustomPropTypes');
 
 var Button = React.createClass({displayName: 'Button',
   mixins: [BootstrapMixin],
@@ -378,7 +137,7 @@ var Button = React.createClass({displayName: 'Button',
     block:    React.PropTypes.bool,
     navItem:    React.PropTypes.bool,
     navDropdown: React.PropTypes.bool,
-    componentClass: CustomPropTypes.componentClass
+    componentClass: React.PropTypes.node
   },
 
   getDefaultProps: function () {
@@ -407,26 +166,29 @@ var Button = React.createClass({displayName: 'Button',
   },
 
   renderAnchor: function (classes) {
-    var component = this.props.componentClass || React.DOM.a;
+
+    var Component = this.props.componentClass || 'a';
     var href = this.props.href || '#';
     classes['disabled'] = this.props.disabled;
 
-    return this.transferPropsTo(
-      component(
-        {href:href,
-        className:classSet(classes),
-        role:"button"}, 
+    return (
+      React.createElement(Component, React.__spread({}, 
+        this.props, 
+        {href: href, 
+        className: joinClasses(this.props.className, classSet(classes)), 
+        role: "button"}), 
         this.props.children
       )
     );
   },
 
   renderButton: function (classes) {
-    var component = this.props.componentClass || React.DOM.button;
+    var Component = this.props.componentClass || 'button';
 
-    return this.transferPropsTo(
-      component(
-        {className:classSet(classes)}, 
+    return (
+      React.createElement(Component, React.__spread({}, 
+        this.props, 
+        {className: joinClasses(this.props.className, classSet(classes))}), 
         this.props.children
       )
     );
@@ -438,7 +200,7 @@ var Button = React.createClass({displayName: 'Button',
     };
 
     return (
-      React.DOM.li( {className:classSet(liClasses)}, 
+      React.createElement("li", {className: classSet(liClasses)}, 
         this.renderAnchor(classes)
       )
     );
@@ -447,10 +209,9 @@ var Button = React.createClass({displayName: 'Button',
 
 module.exports = Button;
 
-},{"./BootstrapMixin":7,"./utils/CustomPropTypes":52,"./utils/classSet":56,"react":206}],9:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./BootstrapMixin":2,"./utils/classSet":12,"./utils/joinClasses":15,"react":161}],4:[function(require,module,exports){
 var React = require('react');
+var joinClasses = require('./utils/joinClasses');
 var classSet = require('./utils/classSet');
 var BootstrapMixin = require('./BootstrapMixin');
 var Button = require('./Button');
@@ -475,9 +236,10 @@ var ButtonGroup = React.createClass({displayName: 'ButtonGroup',
     classes['btn-group-vertical'] = this.props.vertical;
     classes['btn-group-justified'] = this.props.justified;
 
-    return this.transferPropsTo(
-      React.DOM.div(
-        {className:classSet(classes)}, 
+    return (
+      React.createElement("div", React.__spread({}, 
+        this.props, 
+        {className: joinClasses(this.props.className, classSet(classes))}), 
         this.props.children
       )
     );
@@ -485,940 +247,9 @@ var ButtonGroup = React.createClass({displayName: 'ButtonGroup',
 });
 
 module.exports = ButtonGroup;
-},{"./BootstrapMixin":7,"./Button":8,"./utils/classSet":56,"react":206}],10:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./BootstrapMixin":2,"./Button":3,"./utils/classSet":12,"./utils/joinClasses":15,"react":161}],5:[function(require,module,exports){
 var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-var Button = require('./Button');
-
-var ButtonToolbar = React.createClass({displayName: 'ButtonToolbar',
-  mixins: [BootstrapMixin],
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'button-toolbar'
-    };
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-
-    return this.transferPropsTo(
-      React.DOM.div(
-        {role:"toolbar",
-        className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = ButtonToolbar;
-},{"./BootstrapMixin":7,"./Button":8,"./utils/classSet":56,"react":206}],11:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var BootstrapMixin = require('./BootstrapMixin');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-var Carousel = React.createClass({displayName: 'Carousel',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    slide: React.PropTypes.bool,
-    indicators: React.PropTypes.bool,
-    controls: React.PropTypes.bool,
-    pauseOnHover: React.PropTypes.bool,
-    wrap: React.PropTypes.bool,
-    onSelect: React.PropTypes.func,
-    onSlideEnd: React.PropTypes.func,
-    activeIndex: React.PropTypes.number,
-    defaultActiveIndex: React.PropTypes.number,
-    direction: React.PropTypes.oneOf(['prev', 'next'])
-  },
-
-  getDefaultProps: function () {
-    return {
-      slide: true,
-      interval: 5000,
-      pauseOnHover: true,
-      wrap: true,
-      indicators: true,
-      controls: true
-    };
-  },
-
-  getInitialState: function () {
-    return {
-      activeIndex: this.props.defaultActiveIndex == null ?
-        0 : this.props.defaultActiveIndex,
-      previousActiveIndex: null,
-      direction: null
-    };
-  },
-
-  getDirection: function (prevIndex, index) {
-    if (prevIndex === index) {
-      return null;
-    }
-
-    return prevIndex > index ?
-      'prev' : 'next';
-  },
-
-  componentWillReceiveProps: function (nextProps) {
-    var activeIndex = this.getActiveIndex();
-
-    if (nextProps.activeIndex != null && nextProps.activeIndex !== activeIndex) {
-      clearTimeout(this.timeout);
-      this.setState({
-        previousActiveIndex: activeIndex,
-        direction: nextProps.direction != null ?
-          nextProps.direction : this.getDirection(activeIndex, nextProps.activeIndex)
-      });
-    }
-  },
-
-  componentDidMount: function () {
-    this.waitForNext();
-  },
-
-  componentWillUnmount: function() {
-    clearTimeout(this.timeout);
-  },
-
-  next: function (e) {
-    if (e) {
-      e.preventDefault();
-    }
-
-    var index = this.getActiveIndex() + 1;
-    var count = ValidComponentChildren.numberOf(this.props.children);
-
-    if (index > count - 1) {
-      if (!this.props.wrap) {
-        return;
-      }
-      index = 0;
-    }
-
-    this.handleSelect(index, 'next');
-  },
-
-  prev: function (e) {
-    if (e) {
-      e.preventDefault();
-    }
-
-    var index = this.getActiveIndex() - 1;
-
-    if (index < 0) {
-      if (!this.props.wrap) {
-        return;
-      }
-      index = ValidComponentChildren.numberOf(this.props.children) - 1;
-    }
-
-    this.handleSelect(index, 'prev');
-  },
-
-  pause: function () {
-    this.isPaused = true;
-    clearTimeout(this.timeout);
-  },
-
-  play: function () {
-    this.isPaused = false;
-    this.waitForNext();
-  },
-
-  waitForNext: function () {
-    if (!this.isPaused && this.props.slide && this.props.interval &&
-        this.props.activeIndex == null) {
-      this.timeout = setTimeout(this.next, this.props.interval);
-    }
-  },
-
-  handleMouseOver: function () {
-    if (this.props.pauseOnHover) {
-      this.pause();
-    }
-  },
-
-  handleMouseOut: function () {
-    if (this.isPaused) {
-      this.play();
-    }
-  },
-
-  render: function () {
-    var classes = {
-      carousel: true,
-      slide: this.props.slide
-    };
-
-    return this.transferPropsTo(
-      React.DOM.div(
-        {className:classSet(classes),
-        onMouseOver:this.handleMouseOver,
-        onMouseOut:this.handleMouseOut}, 
-        this.props.indicators ? this.renderIndicators() : null,
-        React.DOM.div( {className:"carousel-inner", ref:"inner"}, 
-          ValidComponentChildren.map(this.props.children, this.renderItem)
-        ),
-        this.props.controls ? this.renderControls() : null
-      )
-    );
-  },
-
-  renderPrev: function () {
-    return (
-      React.DOM.a( {className:"left carousel-control", href:"#prev", key:0, onClick:this.prev}, 
-        React.DOM.span( {className:"glyphicon glyphicon-chevron-left"} )
-      )
-    );
-  },
-
-  renderNext: function () {
-    return (
-      React.DOM.a( {className:"right carousel-control", href:"#next", key:1, onClick:this.next}, 
-        React.DOM.span( {className:"glyphicon glyphicon-chevron-right"})
-      )
-    );
-  },
-
-  renderControls: function () {
-    if (this.props.wrap) {
-      var activeIndex = this.getActiveIndex();
-      var count = ValidComponentChildren.numberOf(this.props.children);
-
-      return [
-        (activeIndex !== 0) ? this.renderPrev() : null,
-        (activeIndex !== count - 1) ? this.renderNext() : null
-      ];
-    }
-
-    return [
-      this.renderPrev(),
-      this.renderNext()
-    ];
-  },
-
-  renderIndicator: function (child, index) {
-    var className = (index === this.getActiveIndex()) ?
-      'active' : null;
-
-    return (
-      React.DOM.li(
-        {key:index,
-        className:className,
-        onClick:this.handleSelect.bind(this, index, null)} )
-    );
-  },
-
-  renderIndicators: function () {
-    var indicators = [];
-    ValidComponentChildren
-      .forEach(this.props.children, function(child, index) {
-        indicators.push(
-          this.renderIndicator(child, index),
-
-          // Force whitespace between indicator elements, bootstrap
-          // requires this for correct spacing of elements.
-          ' '
-        );
-      }, this);
-
-    return (
-      React.DOM.ol( {className:"carousel-indicators"}, 
-        indicators
-      )
-    );
-  },
-
-  getActiveIndex: function () {
-    return this.props.activeIndex != null ? this.props.activeIndex : this.state.activeIndex;
-  },
-
-  handleItemAnimateOutEnd: function () {
-    this.setState({
-      previousActiveIndex: null,
-      direction: null
-    }, function() {
-      this.waitForNext();
-
-      if (this.props.onSlideEnd) {
-        this.props.onSlideEnd();
-      }
-    });
-  },
-
-  renderItem: function (child, index) {
-    var activeIndex = this.getActiveIndex();
-    var isActive = (index === activeIndex);
-    var isPreviousActive = this.state.previousActiveIndex != null &&
-            this.state.previousActiveIndex === index && this.props.slide;
-
-    return cloneWithProps(
-        child,
-        {
-          active: isActive,
-          ref: child.props.ref,
-          key: child.props.key != null ?
-            child.props.key : index,
-          index: index,
-          animateOut: isPreviousActive,
-          animateIn: isActive && this.state.previousActiveIndex != null && this.props.slide,
-          direction: this.state.direction,
-          onAnimateOutEnd: isPreviousActive ? this.handleItemAnimateOutEnd: null
-        }
-      );
-  },
-
-  handleSelect: function (index, direction) {
-    clearTimeout(this.timeout);
-
-    var previousActiveIndex = this.getActiveIndex();
-    direction = direction || this.getDirection(previousActiveIndex, index);
-
-    if (this.props.onSelect) {
-      this.props.onSelect(index, direction);
-    }
-
-    if (this.props.activeIndex == null && index !== previousActiveIndex) {
-      if (this.state.previousActiveIndex != null) {
-        // If currently animating don't activate the new index.
-        // TODO: look into queuing this canceled call and
-        // animating after the current animation has ended.
-        return;
-      }
-
-      this.setState({
-        activeIndex: index,
-        previousActiveIndex: previousActiveIndex,
-        direction: direction
-      });
-    }
-  }
-});
-
-module.exports = Carousel;
-},{"./BootstrapMixin":7,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"react":206}],12:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var TransitionEvents = require('./utils/TransitionEvents');
-
-var CarouselItem = React.createClass({displayName: 'CarouselItem',
-  propTypes: {
-    direction: React.PropTypes.oneOf(['prev', 'next']),
-    onAnimateOutEnd: React.PropTypes.func,
-    active: React.PropTypes.bool,
-    caption: React.PropTypes.renderable
-  },
-
-  getInitialState: function () {
-    return {
-      direction: null
-    };
-  },
-
-  getDefaultProps: function () {
-    return {
-      animation: true
-    };
-  },
-
-  handleAnimateOutEnd: function () {
-    if (this.props.onAnimateOutEnd && this.isMounted()) {
-      this.props.onAnimateOutEnd(this.props.index);
-    }
-  },
-
-  componentWillReceiveProps: function (nextProps) {
-    if (this.props.active !== nextProps.active) {
-      this.setState({
-        direction: null
-      });
-    }
-  },
-
-  componentDidUpdate: function (prevProps) {
-    if (!this.props.active && prevProps.active) {
-      TransitionEvents.addEndEventListener(
-        this.getDOMNode(),
-        this.handleAnimateOutEnd
-      );
-    }
-
-    if (this.props.active !== prevProps.active) {
-      setTimeout(this.startAnimation, 20);
-    }
-  },
-
-  startAnimation: function () {
-    if (!this.isMounted()) {
-      return;
-    }
-
-    this.setState({
-      direction: this.props.direction === 'prev' ?
-        'right' : 'left'
-    });
-  },
-
-  render: function () {
-    var classes = {
-      item: true,
-      active: (this.props.active && !this.props.animateIn) || this.props.animateOut,
-      next: this.props.active && this.props.animateIn && this.props.direction === 'next',
-      prev: this.props.active && this.props.animateIn && this.props.direction === 'prev'
-    };
-
-    if (this.state.direction && (this.props.animateIn || this.props.animateOut)) {
-      classes[this.state.direction] = true;
-    }
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes)}, 
-        this.props.children,
-        this.props.caption ? this.renderCaption() : null
-      )
-    );
-  },
-
-  renderCaption: function () {
-    return (
-      React.DOM.div( {className:"carousel-caption"}, 
-        this.props.caption
-      )
-    );
-  }
-});
-
-module.exports = CarouselItem;
-},{"./utils/TransitionEvents":54,"./utils/classSet":56,"react":206}],13:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var CustomPropTypes = require('./utils/CustomPropTypes');
-var constants = require('./constants');
-
-
-var Col = React.createClass({displayName: 'Col',
-  propTypes: {
-    xs: React.PropTypes.number,
-    sm: React.PropTypes.number,
-    md: React.PropTypes.number,
-    lg: React.PropTypes.number,
-    xsOffset: React.PropTypes.number,
-    smOffset: React.PropTypes.number,
-    mdOffset: React.PropTypes.number,
-    lgOffset: React.PropTypes.number,
-    xsPush: React.PropTypes.number,
-    smPush: React.PropTypes.number,
-    mdPush: React.PropTypes.number,
-    lgPush: React.PropTypes.number,
-    xsPull: React.PropTypes.number,
-    smPull: React.PropTypes.number,
-    mdPull: React.PropTypes.number,
-    lgPull: React.PropTypes.number,
-    componentClass: CustomPropTypes.componentClass.isRequired
-  },
-
-  getDefaultProps: function () {
-    return {
-      componentClass: React.DOM.div
-    };
-  },
-
-  render: function () {
-    var componentClass = this.props.componentClass;
-    var classes = {};
-
-    Object.keys(constants.SIZES).forEach(function (key) {
-      var size = constants.SIZES[key];
-      var prop = size;
-      var classPart = size + '-';
-
-      if (this.props[prop]) {
-        classes['col-' + classPart + this.props[prop]] = true;
-      }
-
-      prop = size + 'Offset';
-      classPart = size + '-offset-';
-      if (this.props[prop]) {
-        classes['col-' + classPart + this.props[prop]] = true;
-      }
-
-      prop = size + 'Push';
-      classPart = size + '-push-';
-      if (this.props[prop]) {
-        classes['col-' + classPart + this.props[prop]] = true;
-      }
-
-      prop = size + 'Pull';
-      classPart = size + '-pull-';
-      if (this.props[prop]) {
-        classes['col-' + classPart + this.props[prop]] = true;
-      }
-    }, this);
-
-    return this.transferPropsTo(
-      componentClass( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Col;
-},{"./constants":50,"./utils/CustomPropTypes":52,"./utils/classSet":56,"react":206}],14:[function(require,module,exports){
-var React = require('react');
-var TransitionEvents = require('./utils/TransitionEvents');
-
-var CollapsableMixin = {
-
-  propTypes: {
-    collapsable: React.PropTypes.bool,
-    defaultExpanded: React.PropTypes.bool,
-    expanded: React.PropTypes.bool
-  },
-
-  getInitialState: function () {
-    return {
-      expanded: this.props.defaultExpanded != null ? this.props.defaultExpanded : null,
-      collapsing: false
-    };
-  },
-
-  handleTransitionEnd: function () {
-    this._collapseEnd = true;
-    this.setState({
-      collapsing: false
-    });
-  },
-
-  componentWillReceiveProps: function (newProps) {
-    if (this.props.collapsable && newProps.expanded !== this.props.expanded) {
-      this._collapseEnd = false;
-      this.setState({
-        collapsing: true
-      });
-    }
-  },
-
-  _addEndTransitionListener: function () {
-    var node = this.getCollapsableDOMNode();
-
-    if (node) {
-      TransitionEvents.addEndEventListener(
-        node,
-        this.handleTransitionEnd
-      );
-    }
-  },
-
-  _removeEndTransitionListener: function () {
-    var node = this.getCollapsableDOMNode();
-
-    if (node) {
-      TransitionEvents.addEndEventListener(
-        node,
-        this.handleTransitionEnd
-      );
-    }
-  },
-
-  componentDidMount: function () {
-    this._afterRender();
-  },
-
-  componentWillUnmount: function () {
-    this._removeEndTransitionListener();
-  },
-
-  componentWillUpdate: function (nextProps) {
-    var dimension = (typeof this.getCollapsableDimension === 'function') ?
-      this.getCollapsableDimension() : 'height';
-    var node = this.getCollapsableDOMNode();
-
-    this._removeEndTransitionListener();
-    if (node && nextProps.expanded !== this.props.expanded && this.props.expanded) {
-      node.style[dimension] = this.getCollapsableDimensionValue() + 'px';
-    }
-  },
-
-  componentDidUpdate: function (prevProps, prevState) {
-    if (this.state.collapsing !== prevState.collapsing) {
-      this._afterRender();
-    }
-  },
-
-  _afterRender: function () {
-    if (!this.props.collapsable) {
-      return;
-    }
-
-    this._addEndTransitionListener();
-    setTimeout(this._updateDimensionAfterRender, 0);
-  },
-
-  _updateDimensionAfterRender: function () {
-    var dimension = (typeof this.getCollapsableDimension === 'function') ?
-      this.getCollapsableDimension() : 'height';
-    var node = this.getCollapsableDOMNode();
-
-    if (node) {
-        if(this.isExpanded() && !this.state.collapsing) {
-            node.style[dimension] = 'auto';
-        } else {
-            node.style[dimension] = this.isExpanded() ?
-              this.getCollapsableDimensionValue() + 'px' : '0px';
-        }
-    }
-  },
-
-  isExpanded: function () {
-    return (this.props.expanded != null) ?
-      this.props.expanded : this.state.expanded;
-  },
-
-  getCollapsableClassSet: function (className) {
-    var classes = {};
-
-    if (typeof className === 'string') {
-      className.split(' ').forEach(function (className) {
-        if (className) {
-          classes[className] = true;
-        }
-      });
-    }
-
-    classes.collapsing = this.state.collapsing;
-    classes.collapse = !this.state.collapsing;
-    classes['in'] = this.isExpanded() && !this.state.collapsing;
-
-    return classes;
-  }
-};
-
-module.exports = CollapsableMixin;
-},{"./utils/TransitionEvents":54,"react":206}],15:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var createChainedFunction = require('./utils/createChainedFunction');
-var BootstrapMixin = require('./BootstrapMixin');
-var DropdownStateMixin = require('./DropdownStateMixin');
-var Button = require('./Button');
-var ButtonGroup = require('./ButtonGroup');
-var DropdownMenu = require('./DropdownMenu');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-
-var DropdownButton = React.createClass({displayName: 'DropdownButton',
-  mixins: [BootstrapMixin, DropdownStateMixin],
-
-  propTypes: {
-    pullRight: React.PropTypes.bool,
-    dropup:    React.PropTypes.bool,
-    title:     React.PropTypes.renderable,
-    href:      React.PropTypes.string,
-    onClick:   React.PropTypes.func,
-    onSelect:  React.PropTypes.func,
-    navItem:   React.PropTypes.bool
-  },
-
-  render: function () {
-    var className = 'dropdown-toggle';
-
-    var renderMethod = this.props.navItem ?
-      'renderNavItem' : 'renderButtonGroup';
-
-    return this[renderMethod]([
-      this.transferPropsTo(Button(
-        {ref:"dropdownButton",
-        className:className,
-        onClick:this.handleDropdownClick,
-        key:0,
-        navDropdown:this.props.navItem,
-        navItem:null,
-        title:null,
-        pullRight:null,
-        dropup:null}, 
-        this.props.title,' ',
-        React.DOM.span( {className:"caret"} )
-      )),
-      DropdownMenu(
-        {ref:"menu",
-        'aria-labelledby':this.props.id,
-        pullRight:this.props.pullRight,
-        key:1}, 
-        ValidComponentChildren.map(this.props.children, this.renderMenuItem)
-      )
-    ]);
-  },
-
-  renderButtonGroup: function (children) {
-    var groupClasses = {
-        'open': this.state.open,
-        'dropup': this.props.dropup
-      };
-
-    return (
-      ButtonGroup(
-        {bsSize:this.props.bsSize,
-        className:classSet(groupClasses)}, 
-        children
-      )
-    );
-  },
-
-  renderNavItem: function (children) {
-    var classes = {
-        'dropdown': true,
-        'open': this.state.open,
-        'dropup': this.props.dropup
-      };
-
-    return (
-      React.DOM.li( {className:classSet(classes)}, 
-        children
-      )
-    );
-  },
-
-  renderMenuItem: function (child) {
-    // Only handle the option selection if an onSelect prop has been set on the
-    // component or it's child, this allows a user not to pass an onSelect
-    // handler and have the browser preform the default action.
-    var handleOptionSelect = this.props.onSelect || child.props.onSelect ?
-      this.handleOptionSelect : null;
-
-    return cloneWithProps(
-      child,
-      {
-        // Capture onSelect events
-        onSelect: createChainedFunction(child.props.onSelect, handleOptionSelect),
-
-        // Force special props to be transferred
-        key: child.props.key,
-        ref: child.props.ref
-      }
-    );
-  },
-
-  handleDropdownClick: function (e) {
-    e.preventDefault();
-
-    this.setDropdownState(!this.state.open);
-  },
-
-  handleOptionSelect: function (key) {
-    if (this.props.onSelect) {
-      this.props.onSelect(key);
-    }
-
-    this.setDropdownState(false);
-  }
-});
-
-module.exports = DropdownButton;
-},{"./BootstrapMixin":7,"./Button":8,"./ButtonGroup":9,"./DropdownMenu":16,"./DropdownStateMixin":17,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],16:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var createChainedFunction = require('./utils/createChainedFunction');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-var DropdownMenu = React.createClass({displayName: 'DropdownMenu',
-  propTypes: {
-    pullRight: React.PropTypes.bool,
-    onSelect: React.PropTypes.func
-  },
-
-  render: function () {
-    var classes = {
-        'dropdown-menu': true,
-        'dropdown-menu-right': this.props.pullRight
-      };
-
-    return this.transferPropsTo(
-        React.DOM.ul(
-          {className:classSet(classes),
-          role:"menu"}, 
-          ValidComponentChildren.map(this.props.children, this.renderMenuItem)
-        )
-      );
-  },
-
-  renderMenuItem: function (child) {
-    return cloneWithProps(
-      child,
-      {
-        // Capture onSelect events
-        onSelect: createChainedFunction(child.props.onSelect, this.props.onSelect),
-
-        // Force special props to be transferred
-        key: child.props.key,
-        ref: child.props.ref
-      }
-    );
-  }
-});
-
-module.exports = DropdownMenu;
-},{"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],17:[function(require,module,exports){
-var React = require('react');
-var EventListener = require('./utils/EventListener');
-
-/**
- * Checks whether a node is within
- * a root nodes tree
- *
- * @param {DOMElement} node
- * @param {DOMElement} root
- * @returns {boolean}
- */
-function isNodeInRoot(node, root) {
-  while (node) {
-    if (node === root) {
-      return true;
-    }
-    node = node.parentNode;
-  }
-
-  return false;
-}
-
-var DropdownStateMixin = {
-  getInitialState: function () {
-    return {
-      open: false
-    };
-  },
-
-  setDropdownState: function (newState, onStateChangeComplete) {
-    if (newState) {
-      this.bindRootCloseHandlers();
-    } else {
-      this.unbindRootCloseHandlers();
-    }
-
-    this.setState({
-      open: newState
-    }, onStateChangeComplete);
-  },
-
-  handleDocumentKeyUp: function (e) {
-    if (e.keyCode === 27) {
-      this.setDropdownState(false);
-    }
-  },
-
-  handleDocumentClick: function (e) {
-    // If the click originated from within this component
-    // don't do anything.
-    if (isNodeInRoot(e.target, this.getDOMNode())) {
-      return;
-    }
-
-    this.setDropdownState(false);
-  },
-
-  bindRootCloseHandlers: function () {
-    this._onDocumentClickListener =
-      EventListener.listen(document, 'click', this.handleDocumentClick);
-    this._onDocumentKeyupListener =
-      EventListener.listen(document, 'keyup', this.handleDocumentKeyUp);
-  },
-
-  unbindRootCloseHandlers: function () {
-    if (this._onDocumentClickListener) {
-      this._onDocumentClickListener.remove();
-    }
-
-    if (this._onDocumentKeyupListener) {
-      this._onDocumentKeyupListener.remove();
-    }
-  },
-
-  componentWillUnmount: function () {
-    this.unbindRootCloseHandlers();
-  }
-};
-
-module.exports = DropdownStateMixin;
-},{"./utils/EventListener":53,"react":206}],18:[function(require,module,exports){
-var React = require('react');
-
-// TODO: listen for onTransitionEnd to remove el
-module.exports = {
-  _fadeIn: function () {
-    var els;
-
-    if (this.isMounted()) {
-      els = this.getDOMNode().querySelectorAll('.fade');
-      if (els.length) {
-        Array.prototype.forEach.call(els, function (el) {
-          el.className += ' in';
-        });
-      }
-    }
-  },
-
-  _fadeOut: function () {
-    var els = this._fadeOutEl.querySelectorAll('.fade.in');
-
-    if (els.length) {
-      Array.prototype.forEach.call(els, function (el) {
-        el.className = el.className.replace(/\bin\b/, '');
-      });
-    }
-
-    setTimeout(this._handleFadeOutEnd, 300);
-  },
-
-  _handleFadeOutEnd: function () {
-    if (this._fadeOutEl && this._fadeOutEl.parentNode) {
-      this._fadeOutEl.parentNode.removeChild(this._fadeOutEl);
-    }
-  },
-
-  componentDidMount: function () {
-    if (document.querySelectorAll) {
-      // Firefox needs delay for transition to be triggered
-      setTimeout(this._fadeIn, 20);
-    }
-  },
-
-  componentWillUnmount: function () {
-    var els = this.getDOMNode().querySelectorAll('.fade');
-    if (els.length) {
-      this._fadeOutEl = document.createElement('div');
-      document.body.appendChild(this._fadeOutEl);
-      this._fadeOutEl.appendChild(this.getDOMNode().cloneNode(true));
-      // Firefox needs delay for transition to be triggered
-      setTimeout(this._fadeOut, 20);
-    }
-  }
-};
-
-},{"react":206}],19:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
+var joinClasses = require('./utils/joinClasses');
 var classSet = require('./utils/classSet');
 var BootstrapMixin = require('./BootstrapMixin');
 var constants = require('./constants');
@@ -1441,8 +272,8 @@ var Glyphicon = React.createClass({displayName: 'Glyphicon',
 
     classes['glyphicon-' + this.props.glyph] = true;
 
-    return this.transferPropsTo(
-      React.DOM.span( {className:classSet(classes)}, 
+    return (
+      React.createElement("span", React.__spread({},  this.props, {className: joinClasses(this.props.className, classSet(classes))}), 
         this.props.children
       )
     );
@@ -1450,51 +281,21 @@ var Glyphicon = React.createClass({displayName: 'Glyphicon',
 });
 
 module.exports = Glyphicon;
-},{"./BootstrapMixin":7,"./constants":50,"./utils/classSet":56,"react":206}],20:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./BootstrapMixin":2,"./constants":9,"./utils/classSet":12,"./utils/joinClasses":15,"react":161}],6:[function(require,module,exports){
 var React = require('react');
-var CustomPropTypes = require('./utils/CustomPropTypes');
-
-
-var Grid = React.createClass({displayName: 'Grid',
-  propTypes: {
-    fluid: React.PropTypes.bool,
-    componentClass: CustomPropTypes.componentClass.isRequired
-  },
-
-  getDefaultProps: function () {
-    return {
-      componentClass: React.DOM.div
-    };
-  },
-
-  render: function () {
-    var componentClass = this.props.componentClass;
-
-    return this.transferPropsTo(
-      componentClass( {className:this.props.fluid ? 'container-fluid' : 'container'}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Grid;
-},{"./utils/CustomPropTypes":52,"react":206}],21:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
+var joinClasses = require('./utils/joinClasses');
 var classSet = require('./utils/classSet');
 var Button = require('./Button');
 
 var Input = React.createClass({displayName: 'Input',
   propTypes: {
     type: React.PropTypes.string,
-    label: React.PropTypes.renderable,
-    help: React.PropTypes.renderable,
-    addonBefore: React.PropTypes.renderable,
-    addonAfter: React.PropTypes.renderable,
+    label: React.PropTypes.node,
+    help: React.PropTypes.node,
+    addonBefore: React.PropTypes.node,
+    addonAfter: React.PropTypes.node,
+    buttonBefore: React.PropTypes.node,
+    buttonAfter: React.PropTypes.node,
     bsStyle: function(props) {
       if (props.type === 'submit') {
         // Return early if `type=submit` as the `Button` component
@@ -1507,7 +308,8 @@ var Input = React.createClass({displayName: 'Input',
     hasFeedback: React.PropTypes.bool,
     groupClassName: React.PropTypes.string,
     wrapperClassName: React.PropTypes.string,
-    labelClassName: React.PropTypes.string
+    labelClassName: React.PropTypes.string,
+    disabled: React.PropTypes.bool
   },
 
   getInputDOMNode: function () {
@@ -1534,6 +336,10 @@ var Input = React.createClass({displayName: 'Input',
     return this.props.type === 'radio' || this.props.type === 'checkbox';
   },
 
+  isFile: function () {
+    return this.props.type === 'file';
+  },
+
   renderInput: function () {
     var input = null;
 
@@ -1544,52 +350,66 @@ var Input = React.createClass({displayName: 'Input',
     switch (this.props.type) {
       case 'select':
         input = (
-          React.DOM.select( {className:"form-control", ref:"input", key:"input"}, 
+          React.createElement("select", React.__spread({},  this.props, {className: joinClasses(this.props.className, 'form-control'), ref: "input", key: "input"}), 
             this.props.children
           )
         );
         break;
       case 'textarea':
-        input = React.DOM.textarea( {className:"form-control", ref:"input", key:"input"} );
+        input = React.createElement("textarea", React.__spread({},  this.props, {className: joinClasses(this.props.className, 'form-control'), ref: "input", key: "input"}));
         break;
       case 'static':
         input = (
-          React.DOM.p( {className:"form-control-static", ref:"input",  key:"input"}, 
+          React.createElement("p", React.__spread({},  this.props, {className: joinClasses(this.props.className, 'form-control-static'), ref: "input", key: "input"}), 
             this.props.value
           )
         );
         break;
       case 'submit':
-        input = this.transferPropsTo(
-          Button( {componentClass:React.DOM.input} )
+        input = (
+          React.createElement(Button, React.__spread({},  this.props, {componentClass: "input", ref: "input", key: "input"}))
         );
         break;
       default:
-        var className = this.isCheckboxOrRadio() ? '' : 'form-control';
-        input = React.DOM.input( {className:className, ref:"input", key:"input"} );
+        var className = this.isCheckboxOrRadio() || this.isFile() ? '' : 'form-control';
+        input = React.createElement("input", React.__spread({},  this.props, {className: joinClasses(this.props.className, className), ref: "input", key: "input"}));
     }
 
-    return this.transferPropsTo(input);
+    return input;
   },
 
   renderInputGroup: function (children) {
     var addonBefore = this.props.addonBefore ? (
-      React.DOM.span( {className:"input-group-addon", key:"addonBefore"}, 
+      React.createElement("span", {className: "input-group-addon", key: "addonBefore"}, 
         this.props.addonBefore
       )
     ) : null;
 
     var addonAfter = this.props.addonAfter ? (
-      React.DOM.span( {className:"input-group-addon", key:"addonAfter"}, 
+      React.createElement("span", {className: "input-group-addon", key: "addonAfter"}, 
         this.props.addonAfter
       )
     ) : null;
 
-    return addonBefore || addonAfter ? (
-      React.DOM.div( {className:"input-group", key:"input-group"}, 
-        addonBefore,
-        children,
-        addonAfter
+    var buttonBefore = this.props.buttonBefore ? (
+      React.createElement("span", {className: "input-group-btn"}, 
+        this.props.buttonBefore
+      )
+    ) : null;
+
+    var buttonAfter = this.props.buttonAfter ? (
+      React.createElement("span", {className: "input-group-btn"}, 
+        this.props.buttonAfter
+      )
+    ) : null;
+
+    return addonBefore || addonAfter || buttonBefore || buttonAfter ? (
+      React.createElement("div", {className: "input-group", key: "input-group"}, 
+        addonBefore, 
+        buttonBefore, 
+        children, 
+        addonAfter, 
+        buttonAfter
       )
     ) : children;
   },
@@ -1604,13 +424,13 @@ var Input = React.createClass({displayName: 'Input',
     };
 
     return this.props.hasFeedback ? (
-      React.DOM.span( {className:classSet(classes), key:"icon"} )
+      React.createElement("span", {className: classSet(classes), key: "icon"})
     ) : null;
   },
 
   renderHelp: function () {
     return this.props.help ? (
-      React.DOM.span( {className:"help-block", key:"help"}, 
+      React.createElement("span", {className: "help-block", key: "help"}, 
         this.props.help
       )
     ) : null;
@@ -1623,7 +443,7 @@ var Input = React.createClass({displayName: 'Input',
     };
 
     return (
-      React.DOM.div( {className:classSet(classes), key:"checkboxRadioWrapper"}, 
+      React.createElement("div", {className: classSet(classes), key: "checkboxRadioWrapper"}, 
         children
       )
     );
@@ -1631,7 +451,7 @@ var Input = React.createClass({displayName: 'Input',
 
   renderWrapper: function (children) {
     return this.props.wrapperClassName ? (
-      React.DOM.div( {className:this.props.wrapperClassName, key:"wrapper"}, 
+      React.createElement("div", {className: this.props.wrapperClassName, key: "wrapper"}, 
         children
       )
     ) : children;
@@ -1644,8 +464,8 @@ var Input = React.createClass({displayName: 'Input',
     classes[this.props.labelClassName] = this.props.labelClassName;
 
     return this.props.label ? (
-      React.DOM.label( {htmlFor:this.props.id, className:classSet(classes), key:"label"}, 
-        children,
+      React.createElement("label", {htmlFor: this.props.id, className: classSet(classes), key: "label"}, 
+        children, 
         this.props.label
       )
     ) : children;
@@ -1662,7 +482,7 @@ var Input = React.createClass({displayName: 'Input',
     classes[this.props.groupClassName] = this.props.groupClassName;
 
     return (
-      React.DOM.div( {className:classSet(classes)}, 
+      React.createElement("div", {className: classSet(classes)}, 
         children
       )
     );
@@ -1698,140 +518,11 @@ var Input = React.createClass({displayName: 'Input',
 
 module.exports = Input;
 
-},{"./Button":8,"./utils/classSet":56,"react":206}],22:[function(require,module,exports){
-// https://www.npmjs.org/package/react-interpolate-component
-'use strict';
-
-var React = require('react');
-var merge = require('./utils/merge');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-var REGEXP = /\%\((.+?)\)s/;
-
-var Interpolate = React.createClass({
-  displayName: 'Interpolate',
-
-  propTypes: {
-    format: React.PropTypes.string
-  },
-
-  getDefaultProps: function() {
-    return { component: React.DOM.span };
-  },
-
-  render: function() {
-    var format = ValidComponentChildren.hasValidComponent(this.props.children) ? this.props.children : this.props.format;
-    var parent = this.props.component;
-    var unsafe = this.props.unsafe === true;
-    var props = merge(this.props);
-
-    delete props.children;
-    delete props.format;
-    delete props.component;
-    delete props.unsafe;
-
-    if (unsafe) {
-      var content = format.split(REGEXP).reduce(function(memo, match, index) {
-        var html;
-
-        if (index % 2 === 0) {
-          html = match;
-        } else {
-          html = props[match];
-          delete props[match];
-        }
-
-        if (React.isValidComponent(html)) {
-          throw new Error('cannot interpolate a React component into unsafe text');
-        }
-
-        memo += html;
-
-        return memo;
-      }, '');
-
-      props.dangerouslySetInnerHTML = { __html: content };
-
-      return parent(props);
-    } else {
-      var args = format.split(REGEXP).reduce(function(memo, match, index) {
-        var child;
-
-        if (index % 2 === 0) {
-          if (match.length === 0) {
-            return memo;
-          }
-
-          child = match;
-        } else {
-          child = props[match];
-          delete props[match];
-        }
-
-        memo.push(child);
-
-        return memo;
-      }, [props]);
-
-      return parent.apply(null, args);
-    }
-  }
-});
-
-module.exports = Interpolate;
-
-},{"./utils/ValidComponentChildren":55,"./utils/merge":60,"react":206}],23:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-
-var Jumbotron = React.createClass({displayName: 'Jumbotron',
-
-  render: function () {
-    return this.transferPropsTo(
-      React.DOM.div( {className:"jumbotron"}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Jumbotron;
-},{"react":206}],24:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-var Label = React.createClass({displayName: 'Label',
-  mixins: [BootstrapMixin],
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'label',
-      bsStyle: 'default'
-    };
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-
-    return this.transferPropsTo(
-      React.DOM.span( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Label;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],25:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./Button":3,"./utils/classSet":12,"./utils/joinClasses":15,"react":161}],7:[function(require,module,exports){
 var React = require('react');
 var classSet = require('./utils/classSet');
 var cloneWithProps = require('./utils/cloneWithProps');
+
 var ValidComponentChildren = require('./utils/ValidComponentChildren');
 var createChainedFunction = require('./utils/createChainedFunction');
 
@@ -1842,30 +533,30 @@ var ListGroup = React.createClass({displayName: 'ListGroup',
 
   render: function () {
     return (
-      React.DOM.div( {className:"list-group"}, 
+      React.createElement("div", {className: "list-group"}, 
         ValidComponentChildren.map(this.props.children, this.renderListItem)
       )
     );
   },
 
-  renderListItem: function (child) {
+  renderListItem: function (child, index) {
     return cloneWithProps(child, {
       onClick: createChainedFunction(child.props.onClick, this.props.onClick),
-      ref: child.props.ref,
-      key: child.props.key
+      ref: child.ref,
+      key: child.key ? child.key : index
     });
   }
 });
 
 module.exports = ListGroup;
 
-},{"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],26:[function(require,module,exports){
-/** @jsx React.DOM */
-
+},{"./utils/ValidComponentChildren":11,"./utils/classSet":12,"./utils/cloneWithProps":13,"./utils/createChainedFunction":14,"react":161}],8:[function(require,module,exports){
 var React = require('react');
+var joinClasses = require('./utils/joinClasses');
 var BootstrapMixin = require('./BootstrapMixin');
 var classSet = require('./utils/classSet');
 var cloneWithProps = require('./utils/cloneWithProps');
+
 var ValidComponentChildren = require('./utils/ValidComponentChildren');
 
 var ListGroupItem = React.createClass({displayName: 'ListGroupItem',
@@ -1875,8 +566,9 @@ var ListGroupItem = React.createClass({displayName: 'ListGroupItem',
     bsStyle: React.PropTypes.oneOf(['danger','info','success','warning']),
     active: React.PropTypes.any,
     disabled: React.PropTypes.any,
-    header: React.PropTypes.renderable,
-    onClick: React.PropTypes.func
+    header: React.PropTypes.node,
+    onClick: React.PropTypes.func,
+    eventKey: React.PropTypes.any
   },
 
   getDefaultProps: function () {
@@ -1899,18 +591,19 @@ var ListGroupItem = React.createClass({displayName: 'ListGroupItem',
   },
 
   renderSpan: function (classes) {
-    return this.transferPropsTo(
-      React.DOM.span( {className:classSet(classes)}, 
+    return (
+      React.createElement("span", React.__spread({},  this.props, {className: joinClasses(this.props.className, classSet(classes))}), 
         this.props.header ? this.renderStructuredContent() : this.props.children
       )
     );
   },
 
   renderAnchor: function (classes) {
-    return this.transferPropsTo(
-      React.DOM.a(
-        {className:classSet(classes),
-        onClick:this.handleClick}, 
+    return (
+      React.createElement("a", React.__spread({}, 
+        this.props, 
+        {className: joinClasses(this.props.className, classSet(classes)), 
+        onClick: this.handleClick}), 
         this.props.header ? this.renderStructuredContent() : this.props.children
       )
     );
@@ -1918,20 +611,20 @@ var ListGroupItem = React.createClass({displayName: 'ListGroupItem',
 
   renderStructuredContent: function () {
     var header;
-    if (React.isValidComponent(this.props.header)) {
+    if (React.isValidElement(this.props.header)) {
       header = cloneWithProps(this.props.header, {
         className: 'list-group-item-heading'
       });
     } else {
       header = (
-        React.DOM.h4( {className:"list-group-item-heading"}, 
+        React.createElement("h4", {className: "list-group-item-heading"}, 
           this.props.header
         )
       );
     }
 
     var content = (
-      React.DOM.p( {className:"list-group-item-text"}, 
+      React.createElement("p", {className: "list-group-item-text"}, 
         this.props.children
       )
     );
@@ -1945,2038 +638,14 @@ var ListGroupItem = React.createClass({displayName: 'ListGroupItem',
   handleClick: function (e) {
     if (this.props.onClick) {
       e.preventDefault();
-      this.props.onClick(this.props.key, this.props.href);
+      this.props.onClick(this.props.eventKey, this.props.href);
     }
   }
 });
 
 module.exports = ListGroupItem;
 
-},{"./BootstrapMixin":7,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"react":206}],27:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-
-var MenuItem = React.createClass({displayName: 'MenuItem',
-  propTypes: {
-    header:   React.PropTypes.bool,
-    divider:  React.PropTypes.bool,
-    href:     React.PropTypes.string,
-    title:    React.PropTypes.string,
-    onSelect: React.PropTypes.func
-  },
-
-  getDefaultProps: function () {
-    return {
-      href: '#'
-    };
-  },
-
-  handleClick: function (e) {
-    if (this.props.onSelect) {
-      e.preventDefault();
-      this.props.onSelect(this.props.key);
-    }
-  },
-
-  renderAnchor: function () {
-    return (
-      React.DOM.a( {onClick:this.handleClick, href:this.props.href, title:this.props.title, tabIndex:"-1"}, 
-        this.props.children
-      )
-    );
-  },
-
-  render: function () {
-    var classes = {
-        'dropdown-header': this.props.header,
-        'divider': this.props.divider
-      };
-
-    var children = null;
-    if (this.props.header) {
-      children = this.props.children;
-    } else if (!this.props.divider) {
-      children = this.renderAnchor();
-    }
-
-    return this.transferPropsTo(
-      React.DOM.li( {role:"presentation", title:null, href:null, className:classSet(classes)}, 
-        children
-      )
-    );
-  }
-});
-
-module.exports = MenuItem;
-},{"./utils/classSet":56,"react":206}],28:[function(require,module,exports){
-/** @jsx React.DOM */
-/* global document:false */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-var FadeMixin = require('./FadeMixin');
-var EventListener = require('./utils/EventListener');
-
-
-// TODO:
-// - aria-labelledby
-// - Add `modal-body` div if only one child passed in that doesn't already have it
-// - Tests
-
-var Modal = React.createClass({displayName: 'Modal',
-  mixins: [BootstrapMixin, FadeMixin],
-
-  propTypes: {
-    title: React.PropTypes.renderable,
-    backdrop: React.PropTypes.oneOf(['static', true, false]),
-    keyboard: React.PropTypes.bool,
-    closeButton: React.PropTypes.bool,
-    animation: React.PropTypes.bool,
-    onRequestHide: React.PropTypes.func.isRequired
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'modal',
-      backdrop: true,
-      keyboard: true,
-      animation: true,
-      closeButton: true
-    };
-  },
-
-  render: function () {
-    var modalStyle = {display: 'block'};
-    var dialogClasses = this.getBsClassSet();
-    delete dialogClasses.modal;
-    dialogClasses['modal-dialog'] = true;
-
-    var classes = {
-      modal: true,
-      fade: this.props.animation,
-      'in': !this.props.animation || !document.querySelectorAll
-    };
-
-    var modal = this.transferPropsTo(
-      React.DOM.div(
-        {title:null,
-        tabIndex:"-1",
-        role:"dialog",
-        style:modalStyle,
-        className:classSet(classes),
-        onClick:this.props.backdrop === true ? this.handleBackdropClick : null,
-        ref:"modal"}, 
-        React.DOM.div( {className:classSet(dialogClasses)}, 
-          React.DOM.div( {className:"modal-content"}, 
-            this.props.title ? this.renderHeader() : null,
-            this.props.children
-          )
-        )
-      )
-    );
-
-    return this.props.backdrop ?
-      this.renderBackdrop(modal) : modal;
-  },
-
-  renderBackdrop: function (modal) {
-    var classes = {
-      'modal-backdrop': true,
-      'fade': this.props.animation
-    };
-
-    classes['in'] = !this.props.animation || !document.querySelectorAll;
-
-    var onClick = this.props.backdrop === true ?
-      this.handleBackdropClick : null;
-
-    return (
-      React.DOM.div(null, 
-        React.DOM.div( {className:classSet(classes), ref:"backdrop", onClick:onClick} ),
-        modal
-      )
-    );
-  },
-
-  renderHeader: function () {
-    var closeButton;
-    if (this.props.closeButton) {
-      closeButton = (
-          React.DOM.button( {type:"button", className:"close", 'aria-hidden':"true", onClick:this.props.onRequestHide}, "×")
-        );
-    }
-
-    return (
-      React.DOM.div( {className:"modal-header"}, 
-        closeButton,
-        this.renderTitle()
-      )
-    );
-  },
-
-  renderTitle: function () {
-    return (
-      React.isValidComponent(this.props.title) ?
-        this.props.title : React.DOM.h4( {className:"modal-title"}, this.props.title)
-    );
-  },
-
-  iosClickHack: function () {
-    // IOS only allows click events to be delegated to the document on elements
-    // it considers 'clickable' - anchors, buttons, etc. We fake a click handler on the
-    // DOM nodes themselves. Remove if handled by React: https://github.com/facebook/react/issues/1169
-    this.refs.modal.getDOMNode().onclick = function () {};
-    this.refs.backdrop.getDOMNode().onclick = function () {};
-  },
-
-  componentDidMount: function () {
-    this._onDocumentKeyupListener =
-      EventListener.listen(document, 'keyup', this.handleDocumentKeyUp);
-
-    if (this.props.backdrop) {
-      this.iosClickHack();
-    }
-  },
-
-  componentDidUpdate: function (prevProps) {
-    if (this.props.backdrop && this.props.backdrop !== prevProps.backdrop) {
-      this.iosClickHack();
-    }
-  },
-
-  componentWillUnmount: function () {
-    this._onDocumentKeyupListener.remove();
-  },
-
-  handleBackdropClick: function (e) {
-    if (e.target !== e.currentTarget) {
-      return;
-    }
-
-    this.props.onRequestHide();
-  },
-
-  handleDocumentKeyUp: function (e) {
-    if (this.props.keyboard && e.keyCode === 27) {
-      this.props.onRequestHide();
-    }
-  }
-});
-
-module.exports = Modal;
-
-},{"./BootstrapMixin":7,"./FadeMixin":18,"./utils/EventListener":53,"./utils/classSet":56,"react":206}],29:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var OverlayMixin = require('./OverlayMixin');
-var cloneWithProps = require('./utils/cloneWithProps');
-var createChainedFunction = require('./utils/createChainedFunction');
-
-var ModalTrigger = React.createClass({displayName: 'ModalTrigger',
-  mixins: [OverlayMixin],
-
-  propTypes: {
-    modal: React.PropTypes.renderable.isRequired
-  },
-
-  getInitialState: function () {
-    return {
-      isOverlayShown: false
-    };
-  },
-
-  show: function () {
-    this.setState({
-      isOverlayShown: true
-    });
-  },
-
-  hide: function () {
-    this.setState({
-      isOverlayShown: false
-    });
-  },
-
-  toggle: function () {
-    this.setState({
-      isOverlayShown: !this.state.isOverlayShown
-    });
-  },
-
-  renderOverlay: function () {
-    if (!this.state.isOverlayShown) {
-      return React.DOM.span(null );
-    }
-
-    return cloneWithProps(
-      this.props.modal,
-      {
-        onRequestHide: this.hide
-      }
-    );
-  },
-
-  render: function () {
-    var child = React.Children.only(this.props.children);
-    return cloneWithProps(
-      child,
-      {
-        onClick: createChainedFunction(child.props.onClick, this.toggle)
-      }
-    );
-  }
-});
-
-module.exports = ModalTrigger;
-},{"./OverlayMixin":33,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],30:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var BootstrapMixin = require('./BootstrapMixin');
-var CollapsableMixin = require('./CollapsableMixin');
-var classSet = require('./utils/classSet');
-var domUtils = require('./utils/domUtils');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var createChainedFunction = require('./utils/createChainedFunction');
-
-
-var Nav = React.createClass({displayName: 'Nav',
-  mixins: [BootstrapMixin, CollapsableMixin],
-
-  propTypes: {
-    bsStyle: React.PropTypes.oneOf(['tabs','pills']),
-    stacked: React.PropTypes.bool,
-    justified: React.PropTypes.bool,
-    onSelect: React.PropTypes.func,
-    collapsable: React.PropTypes.bool,
-    expanded: React.PropTypes.bool,
-    navbar: React.PropTypes.bool
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'nav'
-    };
-  },
-
-  getCollapsableDOMNode: function () {
-    return this.getDOMNode();
-  },
-
-  getCollapsableDimensionValue: function () {
-    var node = this.refs.ul.getDOMNode(),
-        height = node.offsetHeight,
-        computedStyles = domUtils.getComputedStyles(node);
-
-    return height + parseInt(computedStyles.marginTop, 10) + parseInt(computedStyles.marginBottom, 10);
-  },
-
-  render: function () {
-    var classes = this.props.collapsable ? this.getCollapsableClassSet() : {};
-
-    classes['navbar-collapse'] = this.props.collapsable;
-
-    if (this.props.navbar && !this.props.collapsable) {
-      return this.transferPropsTo(this.renderUl());
-    }
-
-    return this.transferPropsTo(
-      React.DOM.nav( {className:classSet(classes)}, 
-        this.renderUl()
-      )
-    );
-  },
-
-  renderUl: function () {
-    var classes = this.getBsClassSet();
-
-    classes['nav-stacked'] = this.props.stacked;
-    classes['nav-justified'] = this.props.justified;
-    classes['navbar-nav'] = this.props.navbar;
-    classes['pull-right'] = this.props.pullRight;
-
-    return (
-      React.DOM.ul( {className:classSet(classes), ref:"ul"}, 
-        ValidComponentChildren.map(this.props.children, this.renderNavItem)
-      )
-    );
-  },
-
-  getChildActiveProp: function (child) {
-    if (child.props.active) {
-      return true;
-    }
-    if (this.props.activeKey != null) {
-      if (child.props.key === this.props.activeKey) {
-        return true;
-      }
-    }
-    if (this.props.activeHref != null) {
-      if (child.props.href === this.props.activeHref) {
-        return true;
-      }
-    }
-
-    return child.props.active;
-  },
-
-  renderNavItem: function (child) {
-    return cloneWithProps(
-      child,
-      {
-        active: this.getChildActiveProp(child),
-        activeKey: this.props.activeKey,
-        activeHref: this.props.activeHref,
-        onSelect: createChainedFunction(child.props.onSelect, this.props.onSelect),
-        ref: child.props.ref,
-        key: child.props.key,
-        navItem: true
-      }
-    );
-  }
-});
-
-module.exports = Nav;
-
-},{"./BootstrapMixin":7,"./CollapsableMixin":14,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"./utils/domUtils":59,"react":206}],31:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-var NavItem = React.createClass({displayName: 'NavItem',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    onSelect: React.PropTypes.func,
-    active: React.PropTypes.bool,
-    disabled: React.PropTypes.bool,
-    href: React.PropTypes.string,
-    title: React.PropTypes.string
-  },
-
-  getDefaultProps: function () {
-    return {
-      href: '#'
-    };
-  },
-
-  render: function () {
-    var classes = {
-      'active': this.props.active,
-      'disabled': this.props.disabled
-    };
-
-    return this.transferPropsTo(
-      React.DOM.li( {className:classSet(classes)}, 
-        React.DOM.a(
-          {href:this.props.href,
-          title:this.props.title,
-          onClick:this.handleClick,
-          ref:"anchor"}, 
-          this.props.children
-        )
-      )
-    );
-  },
-
-  handleClick: function (e) {
-    if (this.props.onSelect) {
-      e.preventDefault();
-
-      if (!this.props.disabled) {
-        this.props.onSelect(this.props.key,this.props.href);
-      }
-    }
-  }
-});
-
-module.exports = NavItem;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],32:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var BootstrapMixin = require('./BootstrapMixin');
-var CustomPropTypes = require('./utils/CustomPropTypes');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var createChainedFunction = require('./utils/createChainedFunction');
-var Nav = require('./Nav');
-
-
-var Navbar = React.createClass({displayName: 'Navbar',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    fixedTop: React.PropTypes.bool,
-    fixedBottom: React.PropTypes.bool,
-    staticTop: React.PropTypes.bool,
-    inverse: React.PropTypes.bool,
-    fluid: React.PropTypes.bool,
-    role: React.PropTypes.string,
-    componentClass: CustomPropTypes.componentClass.isRequired,
-    brand: React.PropTypes.renderable,
-    toggleButton: React.PropTypes.renderable,
-    onToggle: React.PropTypes.func,
-    navExpanded: React.PropTypes.bool,
-    defaultNavExpanded: React.PropTypes.bool
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'navbar',
-      bsStyle: 'default',
-      role: 'navigation',
-      componentClass: React.DOM.nav
-    };
-  },
-
-  getInitialState: function () {
-    return {
-      navExpanded: this.props.defaultNavExpanded
-    };
-  },
-
-  shouldComponentUpdate: function() {
-    // Defer any updates to this component during the `onSelect` handler.
-    return !this._isChanging;
-  },
-
-  handleToggle: function () {
-    if (this.props.onToggle) {
-      this._isChanging = true;
-      this.props.onToggle();
-      this._isChanging = false;
-    }
-
-    this.setState({
-      navOpen: !this.state.navOpen
-    });
-  },
-
-  isNavOpen: function () {
-    return this.props.navOpen != null ? this.props.navOpen : this.state.navOpen;
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-    var componentClass = this.props.componentClass;
-
-    classes['navbar-fixed-top'] = this.props.fixedTop;
-    classes['navbar-fixed-bottom'] = this.props.fixedBottom;
-    classes['navbar-static-top'] = this.props.staticTop;
-    classes['navbar-inverse'] = this.props.inverse;
-
-    return this.transferPropsTo(
-      componentClass( {className:classSet(classes)}, 
-        React.DOM.div( {className:this.props.fluid ? 'container-fluid' : 'container'}, 
-          (this.props.brand || this.props.toggleButton || this.props.toggleNavKey) ? this.renderHeader() : null,
-          ValidComponentChildren.map(this.props.children, this.renderChild)
-        )
-      )
-    );
-  },
-
-  renderChild: function (child) {
-    return cloneWithProps(child, {
-      navbar: true,
-      collapsable: this.props.toggleNavKey != null && this.props.toggleNavKey === child.props.key,
-      expanded: this.props.toggleNavKey != null && this.props.toggleNavKey === child.props.key && this.isNavOpen(),
-      key: child.props.key,
-      ref: child.props.ref
-    });
-  },
-
-  renderHeader: function () {
-    var brand;
-
-    if (this.props.brand) {
-      brand = React.isValidComponent(this.props.brand) ?
-        cloneWithProps(this.props.brand, {
-          className: 'navbar-brand'
-        }) : React.DOM.span( {className:"navbar-brand"}, this.props.brand);
-    }
-
-    return (
-      React.DOM.div( {className:"navbar-header"}, 
-        brand,
-        (this.props.toggleButton || this.props.toggleNavKey != null) ? this.renderToggleButton() : null
-      )
-    );
-  },
-
-  renderToggleButton: function () {
-    var children;
-
-    if (React.isValidComponent(this.props.toggleButton)) {
-      return cloneWithProps(this.props.toggleButton, {
-        className: 'navbar-toggle',
-        onClick: createChainedFunction(this.handleToggle, this.props.toggleButton.props.onClick)
-      });
-    }
-
-    children = (this.props.toggleButton != null) ?
-      this.props.toggleButton : [
-        React.DOM.span( {className:"sr-only", key:0}, "Toggle navigation"),
-        React.DOM.span( {className:"icon-bar", key:1}),
-        React.DOM.span( {className:"icon-bar", key:2}),
-        React.DOM.span( {className:"icon-bar", key:3})
-    ];
-
-    return (
-      React.DOM.button( {className:"navbar-toggle", type:"button", onClick:this.handleToggle}, 
-        children
-      )
-    );
-  }
-});
-
-module.exports = Navbar;
-
-},{"./BootstrapMixin":7,"./Nav":30,"./utils/CustomPropTypes":52,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],33:[function(require,module,exports){
-var React = require('react');
-var CustomPropTypes = require('./utils/CustomPropTypes');
-
-module.exports = {
-  propTypes: {
-    container: CustomPropTypes.mountable
-  },
-
-  getDefaultProps: function () {
-    return {
-      container: {
-        // Provide `getDOMNode` fn mocking a React component API. The `document.body`
-        // reference needs to be contained within this function so that it is not accessed
-        // in environments where it would not be defined, e.g. nodejs. Equally this is needed
-        // before the body is defined where `document.body === null`, this ensures
-        // `document.body` is only accessed after componentDidMount.
-        getDOMNode: function getDOMNode() {
-          return document.body;
-        }
-      }
-    };
-  },
-
-  componentWillUnmount: function () {
-    this._unrenderOverlay();
-    if (this._overlayTarget) {
-      this.getContainerDOMNode()
-        .removeChild(this._overlayTarget);
-      this._overlayTarget = null;
-    }
-  },
-
-  componentDidUpdate: function () {
-    this._renderOverlay();
-  },
-
-  componentDidMount: function () {
-    this._renderOverlay();
-  },
-
-  _mountOverlayTarget: function () {
-    this._overlayTarget = document.createElement('div');
-    this.getContainerDOMNode()
-      .appendChild(this._overlayTarget);
-  },
-
-  _renderOverlay: function () {
-    if (!this._overlayTarget) {
-      this._mountOverlayTarget();
-    }
-
-    // Save reference to help testing
-    this._overlayInstance = React.renderComponent(this.renderOverlay(), this._overlayTarget);
-  },
-
-  _unrenderOverlay: function () {
-    React.unmountComponentAtNode(this._overlayTarget);
-    this._overlayInstance = null;
-  },
-
-  getOverlayDOMNode: function () {
-    if (!this.isMounted()) {
-      throw new Error('getOverlayDOMNode(): A component must be mounted to have a DOM node.');
-    }
-
-    return this._overlayInstance.getDOMNode();
-  },
-
-  getContainerDOMNode: function () {
-    return this.props.container.getDOMNode ?
-      this.props.container.getDOMNode() : this.props.container;
-  }
-};
-
-},{"./utils/CustomPropTypes":52,"react":206}],34:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var OverlayMixin = require('./OverlayMixin');
-var domUtils = require('./utils/domUtils');
-var cloneWithProps = require('./utils/cloneWithProps');
-var createChainedFunction = require('./utils/createChainedFunction');
-var merge = require('./utils/merge');
-
-/**
- * Check if value one is inside or equal to the of value
- *
- * @param {string} one
- * @param {string|array} of
- * @returns {boolean}
- */
-function isOneOf(one, of) {
-  if (Array.isArray(of)) {
-    return of.indexOf(one) >= 0;
-  }
-  return one === of;
-}
-
-var OverlayTrigger = React.createClass({displayName: 'OverlayTrigger',
-  mixins: [OverlayMixin],
-
-  propTypes: {
-    trigger: React.PropTypes.oneOfType([
-      React.PropTypes.oneOf(['manual', 'click', 'hover', 'focus']),
-      React.PropTypes.arrayOf(React.PropTypes.oneOf(['click', 'hover', 'focus']))
-    ]),
-    placement: React.PropTypes.oneOf(['top','right', 'bottom', 'left']),
-    delay: React.PropTypes.number,
-    delayShow: React.PropTypes.number,
-    delayHide: React.PropTypes.number,
-    defaultOverlayShown: React.PropTypes.bool,
-    overlay: React.PropTypes.renderable.isRequired
-  },
-
-  getDefaultProps: function () {
-    return {
-      placement: 'right',
-      trigger: ['hover', 'focus']
-    };
-  },
-
-  getInitialState: function () {
-    return {
-      isOverlayShown: this.props.defaultOverlayShown == null ?
-        false : this.props.defaultOverlayShown,
-      overlayLeft: null,
-      overlayTop: null
-    };
-  },
-
-  show: function () {
-    this.setState({
-      isOverlayShown: true
-    }, function() {
-      this.updateOverlayPosition();
-    });
-  },
-
-  hide: function () {
-    this.setState({
-      isOverlayShown: false
-    });
-  },
-
-  toggle: function () {
-    this.state.isOverlayShown ?
-      this.hide() : this.show();
-  },
-
-  renderOverlay: function () {
-    if (!this.state.isOverlayShown) {
-      return React.DOM.span(null );
-    }
-
-    return cloneWithProps(
-      this.props.overlay,
-      {
-        onRequestHide: this.hide,
-        placement: this.props.placement,
-        positionLeft: this.state.overlayLeft,
-        positionTop: this.state.overlayTop
-      }
-    );
-  },
-
-  render: function () {
-    if (this.props.trigger === 'manual') {
-      return React.Children.only(this.props.children);
-    }
-
-    var props = {};
-
-    if (isOneOf('click', this.props.trigger)) {
-      props.onClick = createChainedFunction(this.toggle, this.props.onClick);
-    }
-
-    if (isOneOf('hover', this.props.trigger)) {
-      props.onMouseOver = createChainedFunction(this.handleDelayedShow, this.props.onMouseOver);
-      props.onMouseOut = createChainedFunction(this.handleDelayedHide, this.props.onMouseOut);
-    }
-
-    if (isOneOf('focus', this.props.trigger)) {
-      props.onFocus = createChainedFunction(this.handleDelayedShow, this.props.onFocus);
-      props.onBlur = createChainedFunction(this.handleDelayedHide, this.props.onBlur);
-    }
-
-    return cloneWithProps(
-      React.Children.only(this.props.children),
-      props
-    );
-  },
-
-  componentWillUnmount: function() {
-    clearTimeout(this._hoverDelay);
-  },
-
-  handleDelayedShow: function () {
-    if (this._hoverDelay != null) {
-      clearTimeout(this._hoverDelay);
-      this._hoverDelay = null;
-      return;
-    }
-
-    var delay = this.props.delayShow != null ?
-      this.props.delayShow : this.props.delay;
-
-    if (!delay) {
-      this.show();
-      return;
-    }
-
-    this._hoverDelay = setTimeout(function() {
-      this._hoverDelay = null;
-      this.show();
-    }.bind(this), delay);
-  },
-
-  handleDelayedHide: function () {
-    if (this._hoverDelay != null) {
-      clearTimeout(this._hoverDelay);
-      this._hoverDelay = null;
-      return;
-    }
-
-    var delay = this.props.delayHide != null ?
-      this.props.delayHide : this.props.delay;
-
-    if (!delay) {
-      this.hide();
-      return;
-    }
-
-    this._hoverDelay = setTimeout(function() {
-      this._hoverDelay = null;
-      this.hide();
-    }.bind(this), delay);
-  },
-
-  updateOverlayPosition: function () {
-    if (!this.isMounted()) {
-      return;
-    }
-
-    var pos = this.calcOverlayPosition();
-
-    this.setState({
-      overlayLeft: pos.left,
-      overlayTop: pos.top
-    });
-  },
-
-  calcOverlayPosition: function () {
-    var childOffset = this.getPosition();
-
-    var overlayNode = this.getOverlayDOMNode();
-    var overlayHeight = overlayNode.offsetHeight;
-    var overlayWidth = overlayNode.offsetWidth;
-
-    switch (this.props.placement) {
-      case 'right':
-        return {
-          top: childOffset.top + childOffset.height / 2 - overlayHeight / 2,
-          left: childOffset.left + childOffset.width
-        };
-      case 'left':
-        return {
-          top: childOffset.top + childOffset.height / 2 - overlayHeight / 2,
-          left: childOffset.left - overlayWidth
-        };
-      case 'top':
-        return {
-          top: childOffset.top - overlayHeight,
-          left: childOffset.left + childOffset.width / 2 - overlayWidth / 2
-        };
-      case 'bottom':
-        return {
-          top: childOffset.top + childOffset.height,
-          left: childOffset.left + childOffset.width / 2 - overlayWidth / 2
-        };
-      default:
-        throw new Error('calcOverlayPosition(): No such placement of "' + this.props.placement + '" found.');
-    }
-  },
-
-  getPosition: function () {
-    var node = this.getDOMNode();
-    var container = this.getContainerDOMNode();
-
-    var offset = container.tagName == 'BODY' ?
-      domUtils.getOffset(node) : domUtils.getPosition(node, container);
-
-    return merge(offset, {
-      height: node.offsetHeight,
-      width: node.offsetWidth
-    });
-  }
-});
-
-module.exports = OverlayTrigger;
-},{"./OverlayMixin":33,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"./utils/domUtils":59,"./utils/merge":60,"react":206}],35:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-
-var PageHeader = React.createClass({displayName: 'PageHeader',
-
-  render: function () {
-    return this.transferPropsTo(
-      React.DOM.div( {className:"page-header"}, 
-        React.DOM.h1(null, this.props.children)
-      )
-    );
-  }
-});
-
-module.exports = PageHeader;
-},{"react":206}],36:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-
-var PageItem = React.createClass({displayName: 'PageItem',
-
-  propTypes: {
-    disabled: React.PropTypes.bool,
-    previous: React.PropTypes.bool,
-    next: React.PropTypes.bool,
-    onSelect: React.PropTypes.func
-  },
-
-  getDefaultProps: function () {
-    return {
-      href: '#'
-    };
-  },
-
-  render: function () {
-    var classes = {
-      'disabled': this.props.disabled,
-      'previous': this.props.previous,
-      'next': this.props.next
-    };
-
-    return this.transferPropsTo(
-      React.DOM.li(
-        {className:classSet(classes)}, 
-        React.DOM.a(
-          {href:this.props.href,
-          title:this.props.title,
-          onClick:this.handleSelect,
-          ref:"anchor"}, 
-          this.props.children
-        )
-      )
-    );
-  },
-
-  handleSelect: function (e) {
-    if (this.props.onSelect) {
-      e.preventDefault();
-
-      if (!this.props.disabled) {
-        this.props.onSelect(this.props.key, this.props.href);
-      }
-    }
-  }
-});
-
-module.exports = PageItem;
-},{"./utils/classSet":56,"react":206}],37:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var createChainedFunction = require('./utils/createChainedFunction');
-
-var Pager = React.createClass({displayName: 'Pager',
-
-  propTypes: {
-    onSelect: React.PropTypes.func
-  },
-
-  render: function () {
-    return this.transferPropsTo(
-      React.DOM.ul(
-        {className:"pager"}, 
-        ValidComponentChildren.map(this.props.children, this.renderPageItem)
-      )
-    );
-  },
-
-  renderPageItem: function (child) {
-    return cloneWithProps(
-      child,
-      {
-        onSelect: createChainedFunction(child.props.onSelect, this.props.onSelect),
-        ref: child.props.ref,
-        key: child.props.key
-      }
-    );
-  }
-});
-
-module.exports = Pager;
-},{"./utils/ValidComponentChildren":55,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],38:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var BootstrapMixin = require('./BootstrapMixin');
-var CollapsableMixin = require('./CollapsableMixin');
-
-var Panel = React.createClass({displayName: 'Panel',
-  mixins: [BootstrapMixin, CollapsableMixin],
-
-  propTypes: {
-    onSelect: React.PropTypes.func,
-    header: React.PropTypes.renderable,
-    footer: React.PropTypes.renderable
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'panel',
-      bsStyle: 'default'
-    };
-  },
-
-  handleSelect: function (e) {
-    if (this.props.onSelect) {
-      this._isChanging = true;
-      this.props.onSelect(this.props.key);
-      this._isChanging = false;
-    }
-
-    e.preventDefault();
-
-    this.setState({
-      expanded: !this.state.expanded
-    });
-  },
-
-  shouldComponentUpdate: function () {
-    return !this._isChanging;
-  },
-
-  getCollapsableDimensionValue: function () {
-    return this.refs.body.getDOMNode().offsetHeight;
-  },
-
-  getCollapsableDOMNode: function () {
-    if (!this.isMounted() || !this.refs || !this.refs.panel) {
-      return null;
-    }
-
-    return this.refs.panel.getDOMNode();
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-    classes['panel'] = true;
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes), id:this.props.collapsable ? null : this.props.id, onSelect:null}, 
-        this.renderHeading(),
-        this.props.collapsable ? this.renderCollapsableBody() : this.renderBody(),
-        this.renderFooter()
-      )
-    );
-  },
-
-  renderCollapsableBody: function () {
-    return (
-      React.DOM.div( {className:classSet(this.getCollapsableClassSet('panel-collapse')), id:this.props.id, ref:"panel"}, 
-        this.renderBody()
-      )
-    );
-  },
-
-  renderBody: function () {
-    return (
-      React.DOM.div( {className:"panel-body", ref:"body"}, 
-        this.props.children
-      )
-    );
-  },
-
-  renderHeading: function () {
-    var header = this.props.header;
-
-    if (!header) {
-      return null;
-    }
-
-    if (!React.isValidComponent(header) || Array.isArray(header)) {
-      header = this.props.collapsable ?
-        this.renderCollapsableTitle(header) : header;
-    } else if (this.props.collapsable) {
-      header = cloneWithProps(header, {
-        className: 'panel-title',
-        children: this.renderAnchor(header.props.children)
-      });
-    } else {
-      header = cloneWithProps(header, {
-        className: 'panel-title'
-      });
-    }
-
-    return (
-      React.DOM.div( {className:"panel-heading"}, 
-        header
-      )
-    );
-  },
-
-  renderAnchor: function (header) {
-    return (
-      React.DOM.a(
-        {href:'#' + (this.props.id || ''),
-        className:this.isExpanded() ? null : 'collapsed',
-        onClick:this.handleSelect}, 
-        header
-      )
-    );
-  },
-
-  renderCollapsableTitle: function (header) {
-    return (
-      React.DOM.h4( {className:"panel-title"}, 
-        this.renderAnchor(header)
-      )
-    );
-  },
-
-  renderFooter: function () {
-    if (!this.props.footer) {
-      return null;
-    }
-
-    return (
-      React.DOM.div( {className:"panel-footer"}, 
-        this.props.footer
-      )
-    );
-  }
-});
-
-module.exports = Panel;
-},{"./BootstrapMixin":7,"./CollapsableMixin":14,"./utils/classSet":56,"./utils/cloneWithProps":57,"react":206}],39:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var BootstrapMixin = require('./BootstrapMixin');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-var PanelGroup = React.createClass({displayName: 'PanelGroup',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    collapsable: React.PropTypes.bool,
-    activeKey: React.PropTypes.any,
-    defaultActiveKey: React.PropTypes.any,
-    onSelect: React.PropTypes.func
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'panel-group'
-    };
-  },
-
-  getInitialState: function () {
-    var defaultActiveKey = this.props.defaultActiveKey;
-
-    return {
-      activeKey: defaultActiveKey
-    };
-  },
-
-  render: function () {
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(this.getBsClassSet()), onSelect:null}, 
-        ValidComponentChildren.map(this.props.children, this.renderPanel)
-      )
-    );
-  },
-
-  renderPanel: function (child) {
-    var activeKey =
-      this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
-
-    var props = {
-      bsStyle: child.props.bsStyle || this.props.bsStyle,
-      key: child.props.key,
-      ref: child.props.ref
-    };
-
-    if (this.props.accordion) {
-      props.collapsable = true;
-      props.expanded = (child.props.key === activeKey);
-      props.onSelect = this.handleSelect;
-    }
-
-    return cloneWithProps(
-      child,
-      props
-    );
-  },
-
-  shouldComponentUpdate: function() {
-    // Defer any updates to this component during the `onSelect` handler.
-    return !this._isChanging;
-  },
-
-  handleSelect: function (key) {
-    if (this.props.onSelect) {
-      this._isChanging = true;
-      this.props.onSelect(key);
-      this._isChanging = false;
-    }
-
-    if (this.state.activeKey === key) {
-      key = null;
-    }
-
-    this.setState({
-      activeKey: key
-    });
-  }
-});
-
-module.exports = PanelGroup;
-},{"./BootstrapMixin":7,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"react":206}],40:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-
-var Popover = React.createClass({displayName: 'Popover',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    placement: React.PropTypes.oneOf(['top','right', 'bottom', 'left']),
-    positionLeft: React.PropTypes.number,
-    positionTop: React.PropTypes.number,
-    arrowOffsetLeft: React.PropTypes.number,
-    arrowOffsetTop: React.PropTypes.number,
-    title: React.PropTypes.renderable
-  },
-
-  getDefaultProps: function () {
-    return {
-      placement: 'right'
-    };
-  },
-
-  render: function () {
-    var classes = {};
-    classes['popover'] = true;
-    classes[this.props.placement] = true;
-    classes['in'] = this.props.positionLeft != null || this.props.positionTop != null;
-
-    var style = {};
-    style['left'] = this.props.positionLeft;
-    style['top'] = this.props.positionTop;
-    style['display'] = 'block';
-
-    var arrowStyle = {};
-    arrowStyle['left'] = this.props.arrowOffsetLeft;
-    arrowStyle['top'] = this.props.arrowOffsetTop;
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes), style:style, title:null}, 
-        React.DOM.div( {className:"arrow", style:arrowStyle} ),
-        this.props.title ? this.renderTitle() : null,
-        React.DOM.div( {className:"popover-content"}, 
-          this.props.children
-        )
-      )
-    );
-  },
-
-  renderTitle: function() {
-    return (
-      React.DOM.h3( {className:"popover-title"}, this.props.title)
-    );
-  }
-});
-
-module.exports = Popover;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],41:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var Interpolate = require('./Interpolate');
-var BootstrapMixin = require('./BootstrapMixin');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-
-
-var ProgressBar = React.createClass({displayName: 'ProgressBar',
-  propTypes: {
-    min: React.PropTypes.number,
-    now: React.PropTypes.number,
-    max: React.PropTypes.number,
-    label: React.PropTypes.renderable,
-    srOnly: React.PropTypes.bool,
-    striped: React.PropTypes.bool,
-    active: React.PropTypes.bool
-  },
-
-  mixins: [BootstrapMixin],
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'progress-bar',
-      min: 0,
-      max: 100
-    };
-  },
-
-  getPercentage: function (now, min, max) {
-    return Math.ceil((now - min) / (max - min) * 100);
-  },
-
-  render: function () {
-    var classes = {
-        progress: true
-      };
-
-    if (this.props.active) {
-      classes['progress-striped'] = true;
-      classes['active'] = true;
-    } else if (this.props.striped) {
-      classes['progress-striped'] = true;
-    }
-
-    if (!ValidComponentChildren.hasValidComponent(this.props.children)) {
-      if (!this.props.isChild) {
-        return this.transferPropsTo(
-          React.DOM.div( {className:classSet(classes)}, 
-            this.renderProgressBar()
-          )
-        );
-      } else {
-        return this.transferPropsTo(
-          this.renderProgressBar()
-        );
-      }
-    } else {
-      return this.transferPropsTo(
-        React.DOM.div( {className:classSet(classes)}, 
-          ValidComponentChildren.map(this.props.children, this.renderChildBar)
-        )
-      );
-    }
-  },
-
-  renderChildBar: function (child) {
-    return cloneWithProps(child, {
-      isChild: true,
-      key: child.props.key,
-      ref: child.props.ref
-    });
-  },
-
-  renderProgressBar: function () {
-    var percentage = this.getPercentage(
-        this.props.now,
-        this.props.min,
-        this.props.max
-      );
-
-    var label;
-
-    if (typeof this.props.label === "string") {
-      label = this.renderLabel(percentage);
-    } else if (this.props.label) {
-      label = this.props.label;
-    }
-
-    if (this.props.srOnly) {
-      label = this.renderScreenReaderOnlyLabel(label);
-    }
-
-    return (
-      React.DOM.div( {className:classSet(this.getBsClassSet()), role:"progressbar",
-        style:{width: percentage + '%'},
-        'aria-valuenow':this.props.now,
-        'aria-valuemin':this.props.min,
-        'aria-valuemax':this.props.max}, 
-        label
-      )
-    );
-  },
-
-  renderLabel: function (percentage) {
-    var InterpolateClass = this.props.interpolateClass || Interpolate;
-
-    return (
-      InterpolateClass(
-        {now:this.props.now,
-        min:this.props.min,
-        max:this.props.max,
-        percent:percentage,
-        bsStyle:this.props.bsStyle}, 
-        this.props.label
-      )
-    );
-  },
-
-  renderScreenReaderOnlyLabel: function (label) {
-    return (
-      React.DOM.span( {className:"sr-only"}, 
-        label
-      )
-    );
-  }
-});
-
-module.exports = ProgressBar;
-
-},{"./BootstrapMixin":7,"./Interpolate":22,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"react":206}],42:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var CustomPropTypes = require('./utils/CustomPropTypes');
-
-
-var Row = React.createClass({displayName: 'Row',
-  propTypes: {
-    componentClass: CustomPropTypes.componentClass.isRequired
-  },
-
-  getDefaultProps: function () {
-    return {
-      componentClass: React.DOM.div
-    };
-  },
-
-  render: function () {
-    var componentClass = this.props.componentClass;
-
-    return this.transferPropsTo(
-      componentClass( {className:"row"}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Row;
-},{"./utils/CustomPropTypes":52,"react":206}],43:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-var DropdownStateMixin = require('./DropdownStateMixin');
-var Button = require('./Button');
-var ButtonGroup = require('./ButtonGroup');
-var DropdownMenu = require('./DropdownMenu');
-
-var SplitButton = React.createClass({displayName: 'SplitButton',
-  mixins: [BootstrapMixin, DropdownStateMixin],
-
-  propTypes: {
-    pullRight:     React.PropTypes.bool,
-    title:         React.PropTypes.renderable,
-    href:          React.PropTypes.string,
-    dropdownTitle: React.PropTypes.renderable,
-    onClick:       React.PropTypes.func,
-    onSelect:      React.PropTypes.func,
-    disabled:      React.PropTypes.bool
-  },
-
-  getDefaultProps: function () {
-    return {
-      dropdownTitle: 'Toggle dropdown'
-    };
-  },
-
-  render: function () {
-    var groupClasses = {
-        'open': this.state.open,
-        'dropup': this.props.dropup
-      };
-
-    var button = this.transferPropsTo(
-      Button(
-        {ref:"button",
-        onClick:this.handleButtonClick,
-        title:null,
-        id:null}, 
-        this.props.title
-      )
-    );
-
-    var dropdownButton = this.transferPropsTo(
-      Button(
-        {ref:"dropdownButton",
-        className:"dropdown-toggle",
-        onClick:this.handleDropdownClick,
-        title:null,
-        id:null}, 
-        React.DOM.span( {className:"sr-only"}, this.props.dropdownTitle),
-        React.DOM.span( {className:"caret"} )
-      )
-    );
-
-    return (
-      ButtonGroup(
-        {bsSize:this.props.bsSize,
-        className:classSet(groupClasses),
-        id:this.props.id}, 
-        button,
-        dropdownButton,
-        DropdownMenu(
-          {ref:"menu",
-          onSelect:this.handleOptionSelect,
-          'aria-labelledby':this.props.id,
-          pullRight:this.props.pullRight}, 
-          this.props.children
-        )
-      )
-    );
-  },
-
-  handleButtonClick: function (e) {
-    if (this.state.open) {
-      this.setDropdownState(false);
-    }
-
-    if (this.props.onClick) {
-      this.props.onClick(e);
-    }
-  },
-
-  handleDropdownClick: function (e) {
-    e.preventDefault();
-
-    this.setDropdownState(!this.state.open);
-  },
-
-  handleOptionSelect: function (key) {
-    if (this.props.onSelect) {
-      this.props.onSelect(key);
-    }
-
-    this.setDropdownState(false);
-  }
-});
-
-module.exports = SplitButton;
-
-},{"./BootstrapMixin":7,"./Button":8,"./ButtonGroup":9,"./DropdownMenu":16,"./DropdownStateMixin":17,"./utils/classSet":56,"react":206}],44:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var createChainedFunction = require('./utils/createChainedFunction');
-var BootstrapMixin = require('./BootstrapMixin');
-
-
-var SubNav = React.createClass({displayName: 'SubNav',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    onSelect: React.PropTypes.func,
-    active: React.PropTypes.bool,
-    disabled: React.PropTypes.bool,
-    href: React.PropTypes.string,
-    title: React.PropTypes.string,
-    text: React.PropTypes.renderable
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'nav'
-    };
-  },
-
-  handleClick: function (e) {
-    if (this.props.onSelect) {
-      e.preventDefault();
-
-      if (!this.props.disabled) {
-        this.props.onSelect(this.props.key, this.props.href);
-      }
-    }
-  },
-
-  isActive: function () {
-    return this.isChildActive(this);
-  },
-
-  isChildActive: function (child) {
-    if (child.props.active) {
-      return true;
-    }
-
-    if (this.props.activeKey != null && this.props.activeKey === child.props.key) {
-      return true;
-    }
-
-    if (this.props.activeHref != null && this.props.activeHref === child.props.href) {
-      return true;
-    }
-
-    if (child.props.children) {
-      var isActive = false;
-
-      ValidComponentChildren.forEach(
-        child.props.children,
-        function (child) {
-          if (this.isChildActive(child)) {
-            isActive = true;
-          }
-        },
-        this
-      );
-
-      return isActive;
-    }
-
-    return false;
-  },
-
-  getChildActiveProp: function (child) {
-    if (child.props.active) {
-      return true;
-    }
-    if (this.props.activeKey != null) {
-      if (child.props.key === this.props.activeKey) {
-        return true;
-      }
-    }
-    if (this.props.activeHref != null) {
-      if (child.props.href === this.props.activeHref) {
-        return true;
-      }
-    }
-
-    return child.props.active;
-  },
-
-  render: function () {
-    var classes = {
-      'active': this.isActive(),
-      'disabled': this.props.disabled
-    };
-
-    return this.transferPropsTo(
-      React.DOM.li( {className:classSet(classes)}, 
-        React.DOM.a(
-          {href:this.props.href,
-          title:this.props.title,
-          onClick:this.handleClick,
-          ref:"anchor"}, 
-          this.props.text
-        ),
-        React.DOM.ul( {className:"nav"}, 
-          ValidComponentChildren.map(this.props.children, this.renderNavItem)
-        )
-      )
-    );
-  },
-
-  renderNavItem: function (child) {
-    return cloneWithProps(
-      child,
-      {
-        active: this.getChildActiveProp(child),
-        onSelect: createChainedFunction(child.props.onSelect, this.props.onSelect),
-        ref: child.props.ref,
-        key: child.props.key
-      }
-    );
-  }
-});
-
-module.exports = SubNav;
-
-},{"./BootstrapMixin":7,"./utils/ValidComponentChildren":55,"./utils/classSet":56,"./utils/cloneWithProps":57,"./utils/createChainedFunction":58,"react":206}],45:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var TransitionEvents = require('./utils/TransitionEvents');
-
-var TabPane = React.createClass({displayName: 'TabPane',
-  getDefaultProps: function () {
-    return {
-      animation: true
-    };
-  },
-
-  getInitialState: function () {
-    return {
-      animateIn: false,
-      animateOut: false
-    };
-  },
-
-  componentWillReceiveProps: function (nextProps) {
-    if (this.props.animation) {
-      if (!this.state.animateIn && nextProps.active && !this.props.active) {
-        this.setState({
-          animateIn: true
-        });
-      } else if (!this.state.animateOut && !nextProps.active && this.props.active) {
-        this.setState({
-          animateOut: true
-        });
-      }
-    }
-  },
-
-  componentDidUpdate: function () {
-    if (this.state.animateIn) {
-      setTimeout(this.startAnimateIn, 0);
-    }
-    if (this.state.animateOut) {
-      TransitionEvents.addEndEventListener(
-        this.getDOMNode(),
-        this.stopAnimateOut
-      );
-    }
-  },
-
-  startAnimateIn: function () {
-    if (this.isMounted()) {
-      this.setState({
-        animateIn: false
-      });
-    }
-  },
-
-  stopAnimateOut: function () {
-    if (this.isMounted()) {
-      this.setState({
-        animateOut: false
-      });
-
-      if (typeof this.props.onAnimateOutEnd === 'function') {
-        this.props.onAnimateOutEnd();
-      }
-    }
-  },
-
-  render: function () {
-    var classes = {
-      'tab-pane': true,
-      'fade': true,
-      'active': this.props.active || this.state.animateOut,
-      'in': this.props.active && !this.state.animateIn
-    };
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = TabPane;
-},{"./utils/TransitionEvents":54,"./utils/classSet":56,"react":206}],46:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var BootstrapMixin = require('./BootstrapMixin');
-var cloneWithProps = require('./utils/cloneWithProps');
-var ValidComponentChildren = require('./utils/ValidComponentChildren');
-var Nav = require('./Nav');
-var NavItem = require('./NavItem');
-
-function getDefaultActiveKeyFromChildren(children) {
-  var defaultActiveKey;
-
-  ValidComponentChildren.forEach(children, function(child) {
-    if (defaultActiveKey == null) {
-      defaultActiveKey = child.props.key;
-    }
-  });
-
-  return defaultActiveKey;
-}
-
-var TabbedArea = React.createClass({displayName: 'TabbedArea',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    bsStyle: React.PropTypes.oneOf(['tabs','pills']),
-    animation: React.PropTypes.bool,
-    onSelect: React.PropTypes.func
-  },
-
-  getDefaultProps: function () {
-    return {
-      bsStyle: "tabs",
-      animation: true
-    };
-  },
-
-  getInitialState: function () {
-    var defaultActiveKey = this.props.defaultActiveKey != null ?
-      this.props.defaultActiveKey : getDefaultActiveKeyFromChildren(this.props.children);
-
-    // TODO: In __DEV__ mode warn via `console.warn` if no `defaultActiveKey` has
-    // been set by this point, invalid children or missing key properties are likely the cause.
-
-    return {
-      activeKey: defaultActiveKey,
-      previousActiveKey: null
-    };
-  },
-
-  componentWillReceiveProps: function (nextProps) {
-    if (nextProps.activeKey != null && nextProps.activeKey !== this.props.activeKey) {
-      this.setState({
-        previousActiveKey: this.props.activeKey
-      });
-    }
-  },
-
-  handlePaneAnimateOutEnd: function () {
-    this.setState({
-      previousActiveKey: null
-    });
-  },
-
-  render: function () {
-    var activeKey =
-      this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
-
-    function renderTabIfSet(child) {
-      return child.props.tab != null ? this.renderTab(child) : null;
-    }
-
-    var nav = this.transferPropsTo(
-      Nav( {activeKey:activeKey, onSelect:this.handleSelect, ref:"tabs"}, 
-        ValidComponentChildren.map(this.props.children, renderTabIfSet, this)
-      )
-    );
-
-    return (
-      React.DOM.div(null, 
-        nav,
-        React.DOM.div( {id:this.props.id, className:"tab-content", ref:"panes"}, 
-          ValidComponentChildren.map(this.props.children, this.renderPane)
-        )
-      )
-    );
-  },
-
-  getActiveKey: function () {
-    return this.props.activeKey != null ? this.props.activeKey : this.state.activeKey;
-  },
-
-  renderPane: function (child) {
-    var activeKey = this.getActiveKey();
-
-    return cloneWithProps(
-        child,
-        {
-          active: (child.props.key === activeKey &&
-            (this.state.previousActiveKey == null || !this.props.animation)),
-          ref: child.props.ref,
-          key: child.props.key,
-          animation: this.props.animation,
-          onAnimateOutEnd: (this.state.previousActiveKey != null &&
-            child.props.key === this.state.previousActiveKey) ? this.handlePaneAnimateOutEnd: null
-        }
-      );
-  },
-
-  renderTab: function (child) {
-    var key = child.props.key;
-    return (
-      NavItem(
-        {ref:'tab' + key,
-        key:key}, 
-        child.props.tab
-      )
-    );
-  },
-
-  shouldComponentUpdate: function() {
-    // Defer any updates to this component during the `onSelect` handler.
-    return !this._isChanging;
-  },
-
-  handleSelect: function (key) {
-    if (this.props.onSelect) {
-      this._isChanging = true;
-      this.props.onSelect(key);
-      this._isChanging = false;
-    } else if (key !== this.getActiveKey()) {
-      this.setState({
-        activeKey: key,
-        previousActiveKey: this.getActiveKey()
-      });
-    }
-  }
-});
-
-module.exports = TabbedArea;
-},{"./BootstrapMixin":7,"./Nav":30,"./NavItem":31,"./utils/ValidComponentChildren":55,"./utils/cloneWithProps":57,"react":206}],47:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-
-var Table = React.createClass({displayName: 'Table',
-  propTypes: {
-    striped: React.PropTypes.bool,
-    bordered: React.PropTypes.bool,
-    condensed: React.PropTypes.bool,
-    hover: React.PropTypes.bool,
-    responsive: React.PropTypes.bool
-  },
-
-  render: function () {
-    var classes = {
-      'table': true,
-      'table-striped': this.props.striped,
-      'table-bordered': this.props.bordered,
-      'table-condensed': this.props.condensed,
-      'table-hover': this.props.hover
-    };
-    var table = this.transferPropsTo(
-      React.DOM.table( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-
-    return this.props.responsive ? (
-      React.DOM.div( {className:"table-responsive"}, 
-        table
-      )
-    ) : table;
-  }
-});
-
-module.exports = Table;
-},{"./utils/classSet":56,"react":206}],48:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-
-var Tooltip = React.createClass({displayName: 'Tooltip',
-  mixins: [BootstrapMixin],
-
-  propTypes: {
-    placement: React.PropTypes.oneOf(['top','right', 'bottom', 'left']),
-    positionLeft: React.PropTypes.number,
-    positionTop: React.PropTypes.number,
-    arrowOffsetLeft: React.PropTypes.number,
-    arrowOffsetTop: React.PropTypes.number
-  },
-
-  getDefaultProps: function () {
-    return {
-      placement: 'right'
-    };
-  },
-
-  render: function () {
-    var classes = {};
-    classes['tooltip'] = true;
-    classes[this.props.placement] = true;
-    classes['in'] = this.props.positionLeft != null || this.props.positionTop != null;
-
-    var style = {};
-    style['left'] = this.props.positionLeft;
-    style['top'] = this.props.positionTop;
-
-    var arrowStyle = {};
-    arrowStyle['left'] = this.props.arrowOffsetLeft;
-    arrowStyle['top'] = this.props.arrowOffsetTop;
-
-    return this.transferPropsTo(
-        React.DOM.div( {className:classSet(classes), style:style}, 
-          React.DOM.div( {className:"tooltip-arrow", style:arrowStyle} ),
-          React.DOM.div( {className:"tooltip-inner"}, 
-            this.props.children
-          )
-        )
-      );
-  }
-});
-
-module.exports = Tooltip;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],49:[function(require,module,exports){
-/** @jsx React.DOM */
-
-var React = require('react');
-var classSet = require('./utils/classSet');
-var BootstrapMixin = require('./BootstrapMixin');
-
-var Well = React.createClass({displayName: 'Well',
-  mixins: [BootstrapMixin],
-
-  getDefaultProps: function () {
-    return {
-      bsClass: 'well'
-    };
-  },
-
-  render: function () {
-    var classes = this.getBsClassSet();
-
-    return this.transferPropsTo(
-      React.DOM.div( {className:classSet(classes)}, 
-        this.props.children
-      )
-    );
-  }
-});
-
-module.exports = Well;
-},{"./BootstrapMixin":7,"./utils/classSet":56,"react":206}],50:[function(require,module,exports){
+},{"./BootstrapMixin":2,"./utils/ValidComponentChildren":11,"./utils/classSet":12,"./utils/cloneWithProps":13,"./utils/joinClasses":15,"react":161}],9:[function(require,module,exports){
 module.exports = {
   CLASSES: {
     'alert': 'alert',
@@ -4220,305 +889,56 @@ module.exports = {
   ]
 };
 
-},{}],51:[function(require,module,exports){
-module.exports = {
-  Accordion: require('./Accordion'),
-  Affix: require('./Affix'),
-  AffixMixin: require('./AffixMixin'),
-  Alert: require('./Alert'),
-  BootstrapMixin: require('./BootstrapMixin'),
-  Badge: require('./Badge'),
-  Button: require('./Button'),
-  ButtonGroup: require('./ButtonGroup'),
-  ButtonToolbar: require('./ButtonToolbar'),
-  Carousel: require('./Carousel'),
-  CarouselItem: require('./CarouselItem'),
-  Col: require('./Col'),
-  CollapsableMixin: require('./CollapsableMixin'),
-  DropdownButton: require('./DropdownButton'),
-  DropdownMenu: require('./DropdownMenu'),
-  DropdownStateMixin: require('./DropdownStateMixin'),
-  FadeMixin: require('./FadeMixin'),
-  Glyphicon: require('./Glyphicon'),
-  Grid: require('./Grid'),
-  Input: require('./Input'),
-  Interpolate: require('./Interpolate'),
-  Jumbotron: require('./Jumbotron'),
-  Label: require('./Label'),
-  ListGroup: require('./ListGroup'),
-  ListGroupItem: require('./ListGroupItem'),
-  MenuItem: require('./MenuItem'),
-  Modal: require('./Modal'),
-  Nav: require('./Nav'),
-  Navbar: require('./Navbar'),
-  NavItem: require('./NavItem'),
-  ModalTrigger: require('./ModalTrigger'),
-  OverlayTrigger: require('./OverlayTrigger'),
-  OverlayMixin: require('./OverlayMixin'),
-  PageHeader: require('./PageHeader'),
-  Panel: require('./Panel'),
-  PanelGroup: require('./PanelGroup'),
-  PageItem: require('./PageItem'),
-  Pager: require('./Pager'),
-  Popover: require('./Popover'),
-  ProgressBar: require('./ProgressBar'),
-  Row: require('./Row'),
-  SplitButton: require('./SplitButton'),
-  SubNav: require('./SubNav'),
-  TabbedArea: require('./TabbedArea'),
-  Table: require('./Table'),
-  TabPane: require('./TabPane'),
-  Tooltip: require('./Tooltip'),
-  Well: require('./Well')
-};
-
-},{"./Accordion":2,"./Affix":3,"./AffixMixin":4,"./Alert":5,"./Badge":6,"./BootstrapMixin":7,"./Button":8,"./ButtonGroup":9,"./ButtonToolbar":10,"./Carousel":11,"./CarouselItem":12,"./Col":13,"./CollapsableMixin":14,"./DropdownButton":15,"./DropdownMenu":16,"./DropdownStateMixin":17,"./FadeMixin":18,"./Glyphicon":19,"./Grid":20,"./Input":21,"./Interpolate":22,"./Jumbotron":23,"./Label":24,"./ListGroup":25,"./ListGroupItem":26,"./MenuItem":27,"./Modal":28,"./ModalTrigger":29,"./Nav":30,"./NavItem":31,"./Navbar":32,"./OverlayMixin":33,"./OverlayTrigger":34,"./PageHeader":35,"./PageItem":36,"./Pager":37,"./Panel":38,"./PanelGroup":39,"./Popover":40,"./ProgressBar":41,"./Row":42,"./SplitButton":43,"./SubNav":44,"./TabPane":45,"./TabbedArea":46,"./Table":47,"./Tooltip":48,"./Well":49}],52:[function(require,module,exports){
-var React = require('react');
-
-var ANONYMOUS = '<<anonymous>>';
-
-var CustomPropTypes = {
-  /**
-   * Checks whether a prop is a valid React class
-   *
-   * @param props
-   * @param propName
-   * @param componentName
-   * @returns {Error|undefined}
-   */
-  componentClass: createComponentClassChecker(),
-
-  /**
-   * Checks whether a prop provides a DOM element
-   *
-   * The element can be provided in two forms:
-   * - Directly passed
-   * - Or passed an object which has a `getDOMNode` method which will return the required DOM element
-   *
-   * @param props
-   * @param propName
-   * @param componentName
-   * @returns {Error|undefined}
-   */
-  mountable: createMountableChecker()
-};
-
+},{}],10:[function(require,module,exports){
 /**
- * Create chain-able isRequired validator
+ * Copyright 2014, Facebook, Inc.
+ * All rights reserved.
  *
- * Largely copied directly from:
- *  https://github.com/facebook/react/blob/0.11-stable/src/core/ReactPropTypes.js#L94
+ * This file contains an unmodified version of:
+ * https://github.com/facebook/react/blob/v0.12.0/src/vendor/stubs/Object.assign.js
+ *
+ * This source code is licensed under the BSD-style license found here:
+ * https://github.com/facebook/react/blob/v0.12.0/LICENSE
+ * An additional grant of patent rights can be found here:
+ * https://github.com/facebook/react/blob/v0.12.0/PATENTS
  */
-function createChainableTypeChecker(validate) {
-  function checkType(isRequired, props, propName, componentName) {
-    componentName = componentName || ANONYMOUS;
-    if (props[propName] == null) {
-      if (isRequired) {
-        return new Error(
-          'Required prop `' + propName + '` was not specified in ' +
-            '`' + componentName + '`.'
-        );
-      }
-    } else {
-      return validate(props, propName, componentName);
+
+// https://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.assign
+
+function assign(target, sources) {
+  if (target == null) {
+    throw new TypeError('Object.assign target cannot be null or undefined');
+  }
+
+  var to = Object(target);
+  var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+  for (var nextIndex = 1; nextIndex < arguments.length; nextIndex++) {
+    var nextSource = arguments[nextIndex];
+    if (nextSource == null) {
+      continue;
     }
-  }
 
-  var chainedCheckType = checkType.bind(null, false);
-  chainedCheckType.isRequired = checkType.bind(null, true);
+    var from = Object(nextSource);
 
-  return chainedCheckType;
-}
+    // We don't currently support accessors nor proxies. Therefore this
+    // copy cannot throw. If we ever supported this then we must handle
+    // exceptions and side-effects. We don't support symbols so they won't
+    // be transferred.
 
-function createComponentClassChecker() {
-  function validate(props, propName, componentName) {
-    if (!React.isValidClass(props[propName])) {
-      return new Error(
-        'Invalid prop `' + propName + '` supplied to ' +
-          '`' + componentName + '`, expected a valid React class.'
-      );
-    }
-  }
-
-  return createChainableTypeChecker(validate);
-}
-
-function createMountableChecker() {
-  function validate(props, propName, componentName) {
-    if (typeof props[propName] !== 'object' ||
-      typeof props[propName].getDOMNode !== 'function' && props[propName].nodeType !== 1) {
-      return new Error(
-        'Invalid prop `' + propName + '` supplied to ' +
-          '`' + componentName + '`, expected a DOM element or an object that has a `getDOMNode` method'
-      );
-    }
-  }
-
-  return createChainableTypeChecker(validate);
-}
-
-module.exports = CustomPropTypes;
-},{"react":206}],53:[function(require,module,exports){
-/**
- * React EventListener.listen
- *
- * Copyright 2013-2014 Facebook, Inc.
- * @licence https://github.com/facebook/react/blob/0.11-stable/LICENSE
- *
- * This file contains a modified version of:
- *  https://github.com/facebook/react/blob/0.11-stable/src/vendor/stubs/EventListener.js
- *
- * TODO: remove in favour of solution provided by:
- *  https://github.com/facebook/react/issues/285
- */
-
-/**
- * Does not take into account specific nature of platform.
- */
-var EventListener = {
-  /**
-   * Listen to DOM events during the bubble phase.
-   *
-   * @param {DOMEventTarget} target DOM element to register listener on.
-   * @param {string} eventType Event type, e.g. 'click' or 'mouseover'.
-   * @param {function} callback Callback function.
-   * @return {object} Object with a `remove` method.
-   */
-  listen: function(target, eventType, callback) {
-    if (target.addEventListener) {
-      target.addEventListener(eventType, callback, false);
-      return {
-        remove: function() {
-          target.removeEventListener(eventType, callback, false);
-        }
-      };
-    } else if (target.attachEvent) {
-      target.attachEvent('on' + eventType, callback);
-      return {
-        remove: function() {
-          target.detachEvent('on' + eventType, callback);
-        }
-      };
-    }
-  }
-};
-
-module.exports = EventListener;
-
-},{}],54:[function(require,module,exports){
-/**
- * React TransitionEvents
- *
- * Copyright 2013-2014 Facebook, Inc.
- * @licence https://github.com/facebook/react/blob/0.11-stable/LICENSE
- *
- * This file contains a modified version of:
- *  https://github.com/facebook/react/blob/0.11-stable/src/addons/transitions/ReactTransitionEvents.js
- *
- */
-
-var canUseDOM = !!(
-  typeof window !== 'undefined' &&
-    window.document &&
-    window.document.createElement
-  );
-
-/**
- * EVENT_NAME_MAP is used to determine which event fired when a
- * transition/animation ends, based on the style property used to
- * define that event.
- */
-var EVENT_NAME_MAP = {
-  transitionend: {
-    'transition': 'transitionend',
-    'WebkitTransition': 'webkitTransitionEnd',
-    'MozTransition': 'mozTransitionEnd',
-    'OTransition': 'oTransitionEnd',
-    'msTransition': 'MSTransitionEnd'
-  },
-
-  animationend: {
-    'animation': 'animationend',
-    'WebkitAnimation': 'webkitAnimationEnd',
-    'MozAnimation': 'mozAnimationEnd',
-    'OAnimation': 'oAnimationEnd',
-    'msAnimation': 'MSAnimationEnd'
-  }
-};
-
-var endEvents = [];
-
-function detectEvents() {
-  var testEl = document.createElement('div');
-  var style = testEl.style;
-
-  // On some platforms, in particular some releases of Android 4.x,
-  // the un-prefixed "animation" and "transition" properties are defined on the
-  // style object but the events that fire will still be prefixed, so we need
-  // to check if the un-prefixed events are useable, and if not remove them
-  // from the map
-  if (!('AnimationEvent' in window)) {
-    delete EVENT_NAME_MAP.animationend.animation;
-  }
-
-  if (!('TransitionEvent' in window)) {
-    delete EVENT_NAME_MAP.transitionend.transition;
-  }
-
-  for (var baseEventName in EVENT_NAME_MAP) {
-    var baseEvents = EVENT_NAME_MAP[baseEventName];
-    for (var styleName in baseEvents) {
-      if (styleName in style) {
-        endEvents.push(baseEvents[styleName]);
-        break;
+    for (var key in from) {
+      if (hasOwnProperty.call(from, key)) {
+        to[key] = from[key];
       }
     }
   }
-}
 
-if (canUseDOM) {
-  detectEvents();
-}
-
-// We use the raw {add|remove}EventListener() call because EventListener
-// does not know how to remove event listeners and we really should
-// clean up. Also, these events are not triggered in older browsers
-// so we should be A-OK here.
-
-function addEventListener(node, eventName, eventListener) {
-  node.addEventListener(eventName, eventListener, false);
-}
-
-function removeEventListener(node, eventName, eventListener) {
-  node.removeEventListener(eventName, eventListener, false);
-}
-
-var ReactTransitionEvents = {
-  addEndEventListener: function(node, eventListener) {
-    if (endEvents.length === 0) {
-      // If CSS transitions are not supported, trigger an "end animation"
-      // event immediately.
-      window.setTimeout(eventListener, 0);
-      return;
-    }
-    endEvents.forEach(function(endEvent) {
-      addEventListener(node, endEvent, eventListener);
-    });
-  },
-
-  removeEndEventListener: function(node, eventListener) {
-    if (endEvents.length === 0) {
-      return;
-    }
-    endEvents.forEach(function(endEvent) {
-      removeEventListener(node, endEvent, eventListener);
-    });
-  }
+  return to;
 };
 
-module.exports = ReactTransitionEvents;
+module.exports = assign;
 
-},{}],55:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var React = require('react');
 
 /**
@@ -4537,7 +957,7 @@ function mapValidComponents(children, func, context) {
   var index = 0;
 
   return React.Children.map(children, function (child) {
-    if (React.isValidComponent(child)) {
+    if (React.isValidElement(child)) {
       var lastIndex = index;
       index++;
       return func.call(context, child, lastIndex);
@@ -4562,7 +982,7 @@ function forEachValidComponents(children, func, context) {
   var index = 0;
 
   return React.Children.forEach(children, function (child) {
-    if (React.isValidComponent(child)) {
+    if (React.isValidElement(child)) {
       func.call(context, child, index);
       index++;
     }
@@ -4579,7 +999,7 @@ function numberOfValidComponents(children) {
   var count = 0;
 
   React.Children.forEach(children, function (child) {
-    if (React.isValidComponent(child)) { count++; }
+    if (React.isValidElement(child)) { count++; }
   });
 
   return count;
@@ -4595,7 +1015,7 @@ function hasValidComponent(children) {
   var hasValid = false;
 
   React.Children.forEach(children, function (child) {
-    if (!hasValid && React.isValidComponent(child)) {
+    if (!hasValid && React.isValidElement(child)) {
       hasValid = true;
     }
   });
@@ -4609,16 +1029,18 @@ module.exports = {
   numberOf: numberOfValidComponents,
   hasValidComponent: hasValidComponent
 };
-},{"react":206}],56:[function(require,module,exports){
+},{"react":161}],12:[function(require,module,exports){
 /**
- * React classSet
+ * Copyright 2013-2014, Facebook, Inc.
+ * All rights reserved.
  *
- * Copyright 2013-2014 Facebook, Inc.
- * @licence https://github.com/facebook/react/blob/0.11-stable/LICENSE
+ * This file contains an unmodified version of:
+ * https://github.com/facebook/react/blob/v0.12.0/src/vendor/stubs/cx.js
  *
- * This file is unmodified from:
- *  https://github.com/facebook/react/blob/0.11-stable/src/vendor/stubs/cx.js
- *
+ * This source code is licensed under the BSD-style license found here:
+ * https://github.com/facebook/react/blob/v0.12.0/LICENSE
+ * An additional grant of patent rights can be found here:
+ * https://github.com/facebook/react/blob/v0.12.0/PATENTS
  */
 
 /**
@@ -4647,48 +1069,28 @@ function cx(classNames) {
 }
 
 module.exports = cx;
-},{}],57:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 /**
- * React cloneWithProps
- *
- * Copyright 2013-2014 Facebook, Inc.
- * @licence https://github.com/facebook/react/blob/0.11-stable/LICENSE
+ * Copyright 2013-2014, Facebook, Inc.
+ * All rights reserved.
  *
  * This file contains modified versions of:
- *  https://github.com/facebook/react/blob/0.11-stable/src/utils/cloneWithProps.js
- *  https://github.com/facebook/react/blob/0.11-stable/src/core/ReactPropTransferer.js
- *  https://github.com/facebook/react/blob/0.11-stable/src/utils/joinClasses.js
+ * https://github.com/facebook/react/blob/v0.12.0/src/utils/cloneWithProps.js
+ * https://github.com/facebook/react/blob/v0.12.0/src/core/ReactPropTransferer.js
+ *
+ * This source code is licensed under the BSD-style license found here:
+ * https://github.com/facebook/react/blob/v0.12.0/LICENSE
+ * An additional grant of patent rights can be found here:
+ * https://github.com/facebook/react/blob/v0.12.0/PATENTS
  *
  * TODO: This should be replaced as soon as cloneWithProps is available via
  *  the core React package or a separate package.
  *  @see https://github.com/facebook/react/issues/1906
- *
  */
 
 var React = require('react');
-var merge = require('./merge');
-
-/**
- * Combines multiple className strings into one.
- * http://jsperf.com/joinclasses-args-vs-array
- *
- * @param {...?string} classes
- * @return {string}
- */
-function joinClasses(className/*, ... */) {
-  if (!className) {
-    className = '';
-  }
-  var nextClass;
-  var argLength = arguments.length;
-  if (argLength > 1) {
-    for (var ii = 1; ii < argLength; ii++) {
-      nextClass = arguments[ii];
-      nextClass && (className += ' ' + nextClass);
-    }
-  }
-  return className;
-}
+var joinClasses = require('./joinClasses');
+var assign = require("./Object.assign");
 
 /**
  * Creates a transfer strategy that will merge prop values using the supplied
@@ -4711,7 +1113,7 @@ var transferStrategyMerge = createTransferStrategy(function(a, b) {
   // `merge` overrides the first object's (`props[key]` above) keys using the
   // second object's (`value`) keys. An object's style's existing `propA` would
   // get overridden. Flip the order here.
-  return merge(b, a);
+  return assign({}, b, a);
 });
 
 function emptyFunction() {}
@@ -4730,14 +1132,6 @@ var TransferStrategies = {
    * Transfer the `className` prop by merging them.
    */
   className: createTransferStrategy(joinClasses),
-  /**
-   * Never transfer the `key` prop.
-   */
-  key: emptyFunction,
-  /**
-   * Never transfer the `ref` prop.
-   */
-  ref: emptyFunction,
   /**
    * Transfer the `style` prop (which is an object) by merging them.
    */
@@ -4777,8 +1171,9 @@ function transferInto(props, newProps) {
  * @return {object} a new object containing both sets of props merged.
  */
 function mergeProps(oldProps, newProps) {
-  return transferInto(merge(oldProps), newProps);
+  return transferInto(assign({}, oldProps), newProps);
 }
+
 
 var ReactPropTransferer = {
   mergeProps: mergeProps
@@ -4804,20 +1199,21 @@ function cloneWithProps(child, props) {
     newProps.children = child.props.children;
   }
 
-  // Huge hack to support both the 0.10 API and the new way of doing things
-  // TODO: remove when support for 0.10 is no longer needed
-  if (React.version.indexOf('0.10.') === 0) {
-    return child.constructor.ConvenienceConstructor(newProps);
+  if (React.version.substr(0, 4) === '0.12'){
+    var mockLegacyFactory = function(){};
+    mockLegacyFactory.isReactLegacyFactory = true;
+    mockLegacyFactory.type = child.type;
+
+    return React.createElement(mockLegacyFactory, newProps);
   }
 
-
   // The current API doesn't retain _owner and _context, which is why this
-  // doesn't use ReactDescriptor.cloneAndReplaceProps.
-  return child.constructor(newProps);
+  // doesn't use ReactElement.cloneAndReplaceProps.
+  return React.createElement(child.type, newProps);
 }
 
 module.exports = cloneWithProps;
-},{"./merge":60,"react":206}],58:[function(require,module,exports){
+},{"./Object.assign":10,"./joinClasses":15,"react":161}],14:[function(require,module,exports){
 /**
  * Safe chained function
  *
@@ -4843,156 +1239,49 @@ function createChainedFunction(one, two) {
 }
 
 module.exports = createChainedFunction;
-},{}],59:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
+/**
+ * Copyright 2013-2014, Facebook, Inc.
+ * All rights reserved.
+ *
+ * This file contains an unmodified version of:
+ * https://github.com/facebook/react/blob/v0.12.0/src/utils/joinClasses.js
+ *
+ * This source code is licensed under the BSD-style license found here:
+ * https://github.com/facebook/react/blob/v0.12.0/LICENSE
+ * An additional grant of patent rights can be found here:
+ * https://github.com/facebook/react/blob/v0.12.0/PATENTS
+ */
+
+"use strict";
 
 /**
- * Shortcut to compute element style
+ * Combines multiple className strings into one.
+ * http://jsperf.com/joinclasses-args-vs-array
  *
- * @param {HTMLElement} elem
- * @returns {CssStyle}
+ * @param {...?string} classes
+ * @return {string}
  */
-function getComputedStyles(elem) {
-  return elem.ownerDocument.defaultView.getComputedStyle(elem, null);
-}
-
-/**
- * Get elements offset
- *
- * TODO: REMOVE JQUERY!
- *
- * @param {HTMLElement} DOMNode
- * @returns {{top: number, left: number}}
- */
-function getOffset(DOMNode) {
-  if (window.jQuery) {
-    return window.jQuery(DOMNode).offset();
+function joinClasses(className/*, ... */) {
+  if (!className) {
+    className = '';
   }
-
-  var docElem = document.documentElement;
-  var box = { top: 0, left: 0 };
-
-  // If we don't have gBCR, just use 0,0 rather than error
-  // BlackBerry 5, iOS 3 (original iPhone)
-  if ( typeof DOMNode.getBoundingClientRect !== 'undefined' ) {
-    box = DOMNode.getBoundingClientRect();
-  }
-
-  return {
-    top: box.top + window.pageYOffset - docElem.clientTop,
-    left: box.left + window.pageXOffset - docElem.clientLeft
-  };
-}
-
-/**
- * Get elements position
- *
- * TODO: REMOVE JQUERY!
- *
- * @param {HTMLElement} elem
- * @param {HTMLElement?} offsetParent
- * @returns {{top: number, left: number}}
- */
-function getPosition(elem, offsetParent) {
-  if (window.jQuery) {
-    return window.jQuery(elem).position();
-  }
-
-  var offset,
-      parentOffset = {top: 0, left: 0};
-
-  // Fixed elements are offset from window (parentOffset = {top:0, left: 0}, because it is its only offset parent
-  if (getComputedStyles(elem).position === 'fixed' ) {
-    // We assume that getBoundingClientRect is available when computed position is fixed
-    offset = elem.getBoundingClientRect();
-
-  } else {
-    if (!offsetParent) {
-      // Get *real* offsetParent
-      offsetParent = offsetParent(elem);
-    }
-
-    // Get correct offsets
-    offset = getOffset(elem);
-    if ( offsetParent.nodeName !== 'HTML') {
-      parentOffset = getOffset(offsetParent);
-    }
-
-    // Add offsetParent borders
-    parentOffset.top += parseInt(getComputedStyles(offsetParent).borderTopWidth, 10);
-    parentOffset.left += parseInt(getComputedStyles(offsetParent).borderLeftWidth, 10);
-  }
-
-  // Subtract parent offsets and element margins
-  return {
-    top: offset.top - parentOffset.top - parseInt(getComputedStyles(elem).marginTop, 10),
-    left: offset.left - parentOffset.left - parseInt(getComputedStyles(elem).marginLeft, 10)
-  };
-}
-
-/**
- * Get parent element
- *
- * @param {HTMLElement?} elem
- * @returns {HTMLElement}
- */
-function offsetParent(elem) {
-  var docElem = document.documentElement;
-  var offsetParent = elem.offsetParent || docElem;
-
-  while ( offsetParent && ( offsetParent.nodeName !== 'HTML' &&
-    getComputedStyles(offsetParent).position === 'static' ) ) {
-    offsetParent = offsetParent.offsetParent;
-  }
-
-  return offsetParent || docElem;
-}
-
-module.exports = {
-  getComputedStyles: getComputedStyles,
-  getOffset: getOffset,
-  getPosition: getPosition,
-  offsetParent: offsetParent
-};
-},{}],60:[function(require,module,exports){
-/**
- * Merge helper
- *
- * TODO: to be replaced with ES6's `Object.assign()` for React 0.12
- */
-
-/**
- * Shallow merges two structures by mutating the first parameter.
- *
- * @param {object} one Object to be merged into.
- * @param {?object} two Optional object with properties to merge from.
- */
-function mergeInto(one, two) {
-  if (two != null) {
-    for (var key in two) {
-      if (!two.hasOwnProperty(key)) {
-        continue;
+  var nextClass;
+  var argLength = arguments.length;
+  if (argLength > 1) {
+    for (var ii = 1; ii < argLength; ii++) {
+      nextClass = arguments[ii];
+      if (nextClass) {
+        className = (className ? className + ' ' : '') + nextClass;
       }
-      one[key] = two[key];
     }
   }
+  return className;
 }
 
-/**
- * Shallow merges two structures into a return value, without mutating either.
- *
- * @param {?object} one Optional object with properties to merge from.
- * @param {?object} two Optional object with properties to merge from.
- * @return {object} The shallow extension of one by two.
- */
-function merge(one, two) {
-  var result = {};
-  mergeInto(result, one);
-  mergeInto(result, two);
-  return result;
-}
+module.exports = joinClasses;
 
-module.exports = merge;
-},{}],61:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -5019,7 +1308,7 @@ var AutoFocusMixin = {
 
 module.exports = AutoFocusMixin;
 
-},{"./focusNode":171}],62:[function(require,module,exports){
+},{"./focusNode":126}],17:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  * All rights reserved.
@@ -5241,7 +1530,7 @@ var BeforeInputEventPlugin = {
 
 module.exports = BeforeInputEventPlugin;
 
-},{"./EventConstants":75,"./EventPropagators":80,"./ExecutionEnvironment":81,"./SyntheticInputEvent":149,"./keyOf":193}],63:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPropagators":35,"./ExecutionEnvironment":36,"./SyntheticInputEvent":104,"./keyOf":148}],18:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -5357,7 +1646,7 @@ var CSSProperty = {
 
 module.exports = CSSProperty;
 
-},{}],64:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -5492,7 +1781,7 @@ var CSSPropertyOperations = {
 module.exports = CSSPropertyOperations;
 
 }).call(this,require('_process'))
-},{"./CSSProperty":63,"./ExecutionEnvironment":81,"./camelizeStyleName":160,"./dangerousStyleValue":165,"./hyphenateStyleName":184,"./memoizeStringOnly":195,"./warning":205,"_process":1}],65:[function(require,module,exports){
+},{"./CSSProperty":18,"./ExecutionEnvironment":36,"./camelizeStyleName":115,"./dangerousStyleValue":120,"./hyphenateStyleName":139,"./memoizeStringOnly":150,"./warning":160,"_process":1}],20:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -5592,7 +1881,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 module.exports = CallbackQueue;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./PooledClass":87,"./invariant":186,"_process":1}],66:[function(require,module,exports){
+},{"./Object.assign":41,"./PooledClass":42,"./invariant":141,"_process":1}],21:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -5974,7 +2263,7 @@ var ChangeEventPlugin = {
 
 module.exports = ChangeEventPlugin;
 
-},{"./EventConstants":75,"./EventPluginHub":77,"./EventPropagators":80,"./ExecutionEnvironment":81,"./ReactUpdates":139,"./SyntheticEvent":147,"./isEventSupported":187,"./isTextInputElement":189,"./keyOf":193}],67:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPluginHub":32,"./EventPropagators":35,"./ExecutionEnvironment":36,"./ReactUpdates":94,"./SyntheticEvent":102,"./isEventSupported":142,"./isTextInputElement":144,"./keyOf":148}],22:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -5999,7 +2288,7 @@ var ClientReactRootIndex = {
 
 module.exports = ClientReactRootIndex;
 
-},{}],68:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -6258,7 +2547,7 @@ var CompositionEventPlugin = {
 
 module.exports = CompositionEventPlugin;
 
-},{"./EventConstants":75,"./EventPropagators":80,"./ExecutionEnvironment":81,"./ReactInputSelection":119,"./SyntheticCompositionEvent":145,"./getTextContentAccessor":181,"./keyOf":193}],69:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPropagators":35,"./ExecutionEnvironment":36,"./ReactInputSelection":74,"./SyntheticCompositionEvent":100,"./getTextContentAccessor":136,"./keyOf":148}],24:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -6433,7 +2722,7 @@ var DOMChildrenOperations = {
 module.exports = DOMChildrenOperations;
 
 }).call(this,require('_process'))
-},{"./Danger":72,"./ReactMultiChildUpdateTypes":125,"./getTextContentAccessor":181,"./invariant":186,"_process":1}],70:[function(require,module,exports){
+},{"./Danger":27,"./ReactMultiChildUpdateTypes":80,"./getTextContentAccessor":136,"./invariant":141,"_process":1}],25:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -6732,7 +3021,7 @@ var DOMProperty = {
 module.exports = DOMProperty;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],71:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],26:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -6929,7 +3218,7 @@ var DOMPropertyOperations = {
 module.exports = DOMPropertyOperations;
 
 }).call(this,require('_process'))
-},{"./DOMProperty":70,"./escapeTextForBrowser":169,"./memoizeStringOnly":195,"./warning":205,"_process":1}],72:[function(require,module,exports){
+},{"./DOMProperty":25,"./escapeTextForBrowser":124,"./memoizeStringOnly":150,"./warning":160,"_process":1}],27:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -7115,7 +3404,7 @@ var Danger = {
 module.exports = Danger;
 
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":81,"./createNodesFromMarkup":164,"./emptyFunction":167,"./getMarkupWrap":178,"./invariant":186,"_process":1}],73:[function(require,module,exports){
+},{"./ExecutionEnvironment":36,"./createNodesFromMarkup":119,"./emptyFunction":122,"./getMarkupWrap":133,"./invariant":141,"_process":1}],28:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -7155,7 +3444,7 @@ var DefaultEventPluginOrder = [
 
 module.exports = DefaultEventPluginOrder;
 
-},{"./keyOf":193}],74:[function(require,module,exports){
+},{"./keyOf":148}],29:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -7295,7 +3584,7 @@ var EnterLeaveEventPlugin = {
 
 module.exports = EnterLeaveEventPlugin;
 
-},{"./EventConstants":75,"./EventPropagators":80,"./ReactMount":123,"./SyntheticMouseEvent":151,"./keyOf":193}],75:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPropagators":35,"./ReactMount":78,"./SyntheticMouseEvent":106,"./keyOf":148}],30:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -7367,7 +3656,7 @@ var EventConstants = {
 
 module.exports = EventConstants;
 
-},{"./keyMirror":192}],76:[function(require,module,exports){
+},{"./keyMirror":147}],31:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014 Facebook, Inc.
@@ -7457,7 +3746,7 @@ var EventListener = {
 module.exports = EventListener;
 
 }).call(this,require('_process'))
-},{"./emptyFunction":167,"_process":1}],77:[function(require,module,exports){
+},{"./emptyFunction":122,"_process":1}],32:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -7733,7 +4022,7 @@ var EventPluginHub = {
 module.exports = EventPluginHub;
 
 }).call(this,require('_process'))
-},{"./EventPluginRegistry":78,"./EventPluginUtils":79,"./accumulateInto":157,"./forEachAccumulated":172,"./invariant":186,"_process":1}],78:[function(require,module,exports){
+},{"./EventPluginRegistry":33,"./EventPluginUtils":34,"./accumulateInto":112,"./forEachAccumulated":127,"./invariant":141,"_process":1}],33:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -8013,7 +4302,7 @@ var EventPluginRegistry = {
 module.exports = EventPluginRegistry;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],79:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],34:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -8234,7 +4523,7 @@ var EventPluginUtils = {
 module.exports = EventPluginUtils;
 
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./invariant":186,"_process":1}],80:[function(require,module,exports){
+},{"./EventConstants":30,"./invariant":141,"_process":1}],35:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -8376,7 +4665,7 @@ var EventPropagators = {
 module.exports = EventPropagators;
 
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./EventPluginHub":77,"./accumulateInto":157,"./forEachAccumulated":172,"_process":1}],81:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPluginHub":32,"./accumulateInto":112,"./forEachAccumulated":127,"_process":1}],36:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -8421,7 +4710,7 @@ var ExecutionEnvironment = {
 
 module.exports = ExecutionEnvironment;
 
-},{}],82:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -8607,7 +4896,7 @@ var HTMLDOMPropertyConfig = {
 
 module.exports = HTMLDOMPropertyConfig;
 
-},{"./DOMProperty":70,"./ExecutionEnvironment":81}],83:[function(require,module,exports){
+},{"./DOMProperty":25,"./ExecutionEnvironment":36}],38:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -8763,7 +5052,7 @@ var LinkedValueUtils = {
 module.exports = LinkedValueUtils;
 
 }).call(this,require('_process'))
-},{"./ReactPropTypes":132,"./invariant":186,"_process":1}],84:[function(require,module,exports){
+},{"./ReactPropTypes":87,"./invariant":141,"_process":1}],39:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -8813,7 +5102,7 @@ var LocalEventTrapMixin = {
 module.exports = LocalEventTrapMixin;
 
 }).call(this,require('_process'))
-},{"./ReactBrowserEventEmitter":90,"./accumulateInto":157,"./forEachAccumulated":172,"./invariant":186,"_process":1}],85:[function(require,module,exports){
+},{"./ReactBrowserEventEmitter":45,"./accumulateInto":112,"./forEachAccumulated":127,"./invariant":141,"_process":1}],40:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -8871,7 +5160,7 @@ var MobileSafariClickEventPlugin = {
 
 module.exports = MobileSafariClickEventPlugin;
 
-},{"./EventConstants":75,"./emptyFunction":167}],86:[function(require,module,exports){
+},{"./EventConstants":30,"./emptyFunction":122}],41:[function(require,module,exports){
 /**
  * Copyright 2014, Facebook, Inc.
  * All rights reserved.
@@ -8918,7 +5207,7 @@ function assign(target, sources) {
 
 module.exports = assign;
 
-},{}],87:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -9034,7 +5323,7 @@ var PooledClass = {
 module.exports = PooledClass;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],88:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],43:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -9222,7 +5511,7 @@ React.version = '0.12.0';
 module.exports = React;
 
 }).call(this,require('_process'))
-},{"./DOMPropertyOperations":71,"./EventPluginUtils":79,"./ExecutionEnvironment":81,"./Object.assign":86,"./ReactChildren":91,"./ReactComponent":92,"./ReactCompositeComponent":94,"./ReactContext":95,"./ReactCurrentOwner":96,"./ReactDOM":97,"./ReactDOMComponent":99,"./ReactDefaultInjection":109,"./ReactElement":112,"./ReactElementValidator":113,"./ReactInstanceHandles":120,"./ReactLegacyElement":121,"./ReactMount":123,"./ReactMultiChild":124,"./ReactPerf":128,"./ReactPropTypes":132,"./ReactServerRendering":136,"./ReactTextComponent":138,"./deprecated":166,"./onlyChild":197,"_process":1}],89:[function(require,module,exports){
+},{"./DOMPropertyOperations":26,"./EventPluginUtils":34,"./ExecutionEnvironment":36,"./Object.assign":41,"./ReactChildren":46,"./ReactComponent":47,"./ReactCompositeComponent":49,"./ReactContext":50,"./ReactCurrentOwner":51,"./ReactDOM":52,"./ReactDOMComponent":54,"./ReactDefaultInjection":64,"./ReactElement":67,"./ReactElementValidator":68,"./ReactInstanceHandles":75,"./ReactLegacyElement":76,"./ReactMount":78,"./ReactMultiChild":79,"./ReactPerf":83,"./ReactPropTypes":87,"./ReactServerRendering":91,"./ReactTextComponent":93,"./deprecated":121,"./onlyChild":152,"_process":1}],44:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -9265,7 +5554,7 @@ var ReactBrowserComponentMixin = {
 module.exports = ReactBrowserComponentMixin;
 
 }).call(this,require('_process'))
-},{"./ReactEmptyComponent":114,"./ReactMount":123,"./invariant":186,"_process":1}],90:[function(require,module,exports){
+},{"./ReactEmptyComponent":69,"./ReactMount":78,"./invariant":141,"_process":1}],45:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -9620,7 +5909,7 @@ var ReactBrowserEventEmitter = assign({}, ReactEventEmitterMixin, {
 
 module.exports = ReactBrowserEventEmitter;
 
-},{"./EventConstants":75,"./EventPluginHub":77,"./EventPluginRegistry":78,"./Object.assign":86,"./ReactEventEmitterMixin":116,"./ViewportMetrics":156,"./isEventSupported":187}],91:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPluginHub":32,"./EventPluginRegistry":33,"./Object.assign":41,"./ReactEventEmitterMixin":71,"./ViewportMetrics":111,"./isEventSupported":142}],46:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -9770,7 +6059,7 @@ var ReactChildren = {
 module.exports = ReactChildren;
 
 }).call(this,require('_process'))
-},{"./PooledClass":87,"./traverseAllChildren":204,"./warning":205,"_process":1}],92:[function(require,module,exports){
+},{"./PooledClass":42,"./traverseAllChildren":159,"./warning":160,"_process":1}],47:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -10213,7 +6502,7 @@ var ReactComponent = {
 module.exports = ReactComponent;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./ReactElement":112,"./ReactOwner":127,"./ReactUpdates":139,"./invariant":186,"./keyMirror":192,"_process":1}],93:[function(require,module,exports){
+},{"./Object.assign":41,"./ReactElement":67,"./ReactOwner":82,"./ReactUpdates":94,"./invariant":141,"./keyMirror":147,"_process":1}],48:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -10335,7 +6624,7 @@ var ReactComponentBrowserEnvironment = {
 module.exports = ReactComponentBrowserEnvironment;
 
 }).call(this,require('_process'))
-},{"./ReactDOMIDOperations":101,"./ReactMarkupChecksum":122,"./ReactMount":123,"./ReactPerf":128,"./ReactReconcileTransaction":134,"./getReactRootElementInContainer":180,"./invariant":186,"./setInnerHTML":200,"_process":1}],94:[function(require,module,exports){
+},{"./ReactDOMIDOperations":56,"./ReactMarkupChecksum":77,"./ReactMount":78,"./ReactPerf":83,"./ReactReconcileTransaction":89,"./getReactRootElementInContainer":135,"./invariant":141,"./setInnerHTML":155,"_process":1}],49:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -11775,7 +8064,7 @@ var ReactCompositeComponent = {
 module.exports = ReactCompositeComponent;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./ReactComponent":92,"./ReactContext":95,"./ReactCurrentOwner":96,"./ReactElement":112,"./ReactElementValidator":113,"./ReactEmptyComponent":114,"./ReactErrorUtils":115,"./ReactLegacyElement":121,"./ReactOwner":127,"./ReactPerf":128,"./ReactPropTransferer":129,"./ReactPropTypeLocationNames":130,"./ReactPropTypeLocations":131,"./ReactUpdates":139,"./instantiateReactComponent":185,"./invariant":186,"./keyMirror":192,"./keyOf":193,"./mapObject":194,"./monitorCodeUse":196,"./shouldUpdateReactComponent":202,"./warning":205,"_process":1}],95:[function(require,module,exports){
+},{"./Object.assign":41,"./ReactComponent":47,"./ReactContext":50,"./ReactCurrentOwner":51,"./ReactElement":67,"./ReactElementValidator":68,"./ReactEmptyComponent":69,"./ReactErrorUtils":70,"./ReactLegacyElement":76,"./ReactOwner":82,"./ReactPerf":83,"./ReactPropTransferer":84,"./ReactPropTypeLocationNames":85,"./ReactPropTypeLocations":86,"./ReactUpdates":94,"./instantiateReactComponent":140,"./invariant":141,"./keyMirror":147,"./keyOf":148,"./mapObject":149,"./monitorCodeUse":151,"./shouldUpdateReactComponent":157,"./warning":160,"_process":1}],50:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -11837,7 +8126,7 @@ var ReactContext = {
 
 module.exports = ReactContext;
 
-},{"./Object.assign":86}],96:[function(require,module,exports){
+},{"./Object.assign":41}],51:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -11871,7 +8160,7 @@ var ReactCurrentOwner = {
 
 module.exports = ReactCurrentOwner;
 
-},{}],97:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -12054,7 +8343,7 @@ var ReactDOM = mapObject({
 module.exports = ReactDOM;
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./ReactElementValidator":113,"./ReactLegacyElement":121,"./mapObject":194,"_process":1}],98:[function(require,module,exports){
+},{"./ReactElement":67,"./ReactElementValidator":68,"./ReactLegacyElement":76,"./mapObject":149,"_process":1}],53:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -12119,7 +8408,7 @@ var ReactDOMButton = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMButton;
 
-},{"./AutoFocusMixin":61,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112,"./keyMirror":192}],99:[function(require,module,exports){
+},{"./AutoFocusMixin":16,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67,"./keyMirror":147}],54:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -12606,7 +8895,7 @@ assign(
 module.exports = ReactDOMComponent;
 
 }).call(this,require('_process'))
-},{"./CSSPropertyOperations":64,"./DOMProperty":70,"./DOMPropertyOperations":71,"./Object.assign":86,"./ReactBrowserComponentMixin":89,"./ReactBrowserEventEmitter":90,"./ReactComponent":92,"./ReactMount":123,"./ReactMultiChild":124,"./ReactPerf":128,"./escapeTextForBrowser":169,"./invariant":186,"./isEventSupported":187,"./keyOf":193,"./monitorCodeUse":196,"_process":1}],100:[function(require,module,exports){
+},{"./CSSPropertyOperations":19,"./DOMProperty":25,"./DOMPropertyOperations":26,"./Object.assign":41,"./ReactBrowserComponentMixin":44,"./ReactBrowserEventEmitter":45,"./ReactComponent":47,"./ReactMount":78,"./ReactMultiChild":79,"./ReactPerf":83,"./escapeTextForBrowser":124,"./invariant":141,"./isEventSupported":142,"./keyOf":148,"./monitorCodeUse":151,"_process":1}],55:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -12656,7 +8945,7 @@ var ReactDOMForm = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMForm;
 
-},{"./EventConstants":75,"./LocalEventTrapMixin":84,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112}],101:[function(require,module,exports){
+},{"./EventConstants":30,"./LocalEventTrapMixin":39,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67}],56:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -12842,7 +9131,7 @@ var ReactDOMIDOperations = {
 module.exports = ReactDOMIDOperations;
 
 }).call(this,require('_process'))
-},{"./CSSPropertyOperations":64,"./DOMChildrenOperations":69,"./DOMPropertyOperations":71,"./ReactMount":123,"./ReactPerf":128,"./invariant":186,"./setInnerHTML":200,"_process":1}],102:[function(require,module,exports){
+},{"./CSSPropertyOperations":19,"./DOMChildrenOperations":24,"./DOMPropertyOperations":26,"./ReactMount":78,"./ReactPerf":83,"./invariant":141,"./setInnerHTML":155,"_process":1}],57:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -12890,7 +9179,7 @@ var ReactDOMImg = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMImg;
 
-},{"./EventConstants":75,"./LocalEventTrapMixin":84,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112}],103:[function(require,module,exports){
+},{"./EventConstants":30,"./LocalEventTrapMixin":39,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67}],58:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -13068,7 +9357,7 @@ var ReactDOMInput = ReactCompositeComponent.createClass({
 module.exports = ReactDOMInput;
 
 }).call(this,require('_process'))
-},{"./AutoFocusMixin":61,"./DOMPropertyOperations":71,"./LinkedValueUtils":83,"./Object.assign":86,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112,"./ReactMount":123,"./ReactUpdates":139,"./invariant":186,"_process":1}],104:[function(require,module,exports){
+},{"./AutoFocusMixin":16,"./DOMPropertyOperations":26,"./LinkedValueUtils":38,"./Object.assign":41,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67,"./ReactMount":78,"./ReactUpdates":94,"./invariant":141,"_process":1}],59:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -13121,7 +9410,7 @@ var ReactDOMOption = ReactCompositeComponent.createClass({
 module.exports = ReactDOMOption;
 
 }).call(this,require('_process'))
-},{"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112,"./warning":205,"_process":1}],105:[function(require,module,exports){
+},{"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67,"./warning":160,"_process":1}],60:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -13305,7 +9594,7 @@ var ReactDOMSelect = ReactCompositeComponent.createClass({
 
 module.exports = ReactDOMSelect;
 
-},{"./AutoFocusMixin":61,"./LinkedValueUtils":83,"./Object.assign":86,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112,"./ReactUpdates":139}],106:[function(require,module,exports){
+},{"./AutoFocusMixin":16,"./LinkedValueUtils":38,"./Object.assign":41,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67,"./ReactUpdates":94}],61:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -13514,7 +9803,7 @@ var ReactDOMSelection = {
 
 module.exports = ReactDOMSelection;
 
-},{"./ExecutionEnvironment":81,"./getNodeForCharacterOffset":179,"./getTextContentAccessor":181}],107:[function(require,module,exports){
+},{"./ExecutionEnvironment":36,"./getNodeForCharacterOffset":134,"./getTextContentAccessor":136}],62:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -13655,7 +9944,7 @@ var ReactDOMTextarea = ReactCompositeComponent.createClass({
 module.exports = ReactDOMTextarea;
 
 }).call(this,require('_process'))
-},{"./AutoFocusMixin":61,"./DOMPropertyOperations":71,"./LinkedValueUtils":83,"./Object.assign":86,"./ReactBrowserComponentMixin":89,"./ReactCompositeComponent":94,"./ReactDOM":97,"./ReactElement":112,"./ReactUpdates":139,"./invariant":186,"./warning":205,"_process":1}],108:[function(require,module,exports){
+},{"./AutoFocusMixin":16,"./DOMPropertyOperations":26,"./LinkedValueUtils":38,"./Object.assign":41,"./ReactBrowserComponentMixin":44,"./ReactCompositeComponent":49,"./ReactDOM":52,"./ReactElement":67,"./ReactUpdates":94,"./invariant":141,"./warning":160,"_process":1}],63:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -13728,7 +10017,7 @@ var ReactDefaultBatchingStrategy = {
 
 module.exports = ReactDefaultBatchingStrategy;
 
-},{"./Object.assign":86,"./ReactUpdates":139,"./Transaction":155,"./emptyFunction":167}],109:[function(require,module,exports){
+},{"./Object.assign":41,"./ReactUpdates":94,"./Transaction":110,"./emptyFunction":122}],64:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -13857,7 +10146,7 @@ module.exports = {
 };
 
 }).call(this,require('_process'))
-},{"./BeforeInputEventPlugin":62,"./ChangeEventPlugin":66,"./ClientReactRootIndex":67,"./CompositionEventPlugin":68,"./DefaultEventPluginOrder":73,"./EnterLeaveEventPlugin":74,"./ExecutionEnvironment":81,"./HTMLDOMPropertyConfig":82,"./MobileSafariClickEventPlugin":85,"./ReactBrowserComponentMixin":89,"./ReactComponentBrowserEnvironment":93,"./ReactDOMButton":98,"./ReactDOMComponent":99,"./ReactDOMForm":100,"./ReactDOMImg":102,"./ReactDOMInput":103,"./ReactDOMOption":104,"./ReactDOMSelect":105,"./ReactDOMTextarea":107,"./ReactDefaultBatchingStrategy":108,"./ReactDefaultPerf":110,"./ReactEventListener":117,"./ReactInjection":118,"./ReactInstanceHandles":120,"./ReactMount":123,"./SVGDOMPropertyConfig":140,"./SelectEventPlugin":141,"./ServerReactRootIndex":142,"./SimpleEventPlugin":143,"./createFullPageComponent":163,"_process":1}],110:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":17,"./ChangeEventPlugin":21,"./ClientReactRootIndex":22,"./CompositionEventPlugin":23,"./DefaultEventPluginOrder":28,"./EnterLeaveEventPlugin":29,"./ExecutionEnvironment":36,"./HTMLDOMPropertyConfig":37,"./MobileSafariClickEventPlugin":40,"./ReactBrowserComponentMixin":44,"./ReactComponentBrowserEnvironment":48,"./ReactDOMButton":53,"./ReactDOMComponent":54,"./ReactDOMForm":55,"./ReactDOMImg":57,"./ReactDOMInput":58,"./ReactDOMOption":59,"./ReactDOMSelect":60,"./ReactDOMTextarea":62,"./ReactDefaultBatchingStrategy":63,"./ReactDefaultPerf":65,"./ReactEventListener":72,"./ReactInjection":73,"./ReactInstanceHandles":75,"./ReactMount":78,"./SVGDOMPropertyConfig":95,"./SelectEventPlugin":96,"./ServerReactRootIndex":97,"./SimpleEventPlugin":98,"./createFullPageComponent":118,"_process":1}],65:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -14117,7 +10406,7 @@ var ReactDefaultPerf = {
 
 module.exports = ReactDefaultPerf;
 
-},{"./DOMProperty":70,"./ReactDefaultPerfAnalysis":111,"./ReactMount":123,"./ReactPerf":128,"./performanceNow":199}],111:[function(require,module,exports){
+},{"./DOMProperty":25,"./ReactDefaultPerfAnalysis":66,"./ReactMount":78,"./ReactPerf":83,"./performanceNow":154}],66:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -14323,7 +10612,7 @@ var ReactDefaultPerfAnalysis = {
 
 module.exports = ReactDefaultPerfAnalysis;
 
-},{"./Object.assign":86}],112:[function(require,module,exports){
+},{"./Object.assign":41}],67:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -14569,7 +10858,7 @@ ReactElement.isValidElement = function(object) {
 module.exports = ReactElement;
 
 }).call(this,require('_process'))
-},{"./ReactContext":95,"./ReactCurrentOwner":96,"./warning":205,"_process":1}],113:[function(require,module,exports){
+},{"./ReactContext":50,"./ReactCurrentOwner":51,"./warning":160,"_process":1}],68:[function(require,module,exports){
 /**
  * Copyright 2014, Facebook, Inc.
  * All rights reserved.
@@ -14837,7 +11126,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 
-},{"./ReactCurrentOwner":96,"./ReactElement":112,"./ReactPropTypeLocations":131,"./monitorCodeUse":196}],114:[function(require,module,exports){
+},{"./ReactCurrentOwner":51,"./ReactElement":67,"./ReactPropTypeLocations":86,"./monitorCodeUse":151}],69:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -14914,7 +11203,7 @@ var ReactEmptyComponent = {
 module.exports = ReactEmptyComponent;
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./invariant":186,"_process":1}],115:[function(require,module,exports){
+},{"./ReactElement":67,"./invariant":141,"_process":1}],70:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -14946,7 +11235,7 @@ var ReactErrorUtils = {
 
 module.exports = ReactErrorUtils;
 
-},{}],116:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -14996,7 +11285,7 @@ var ReactEventEmitterMixin = {
 
 module.exports = ReactEventEmitterMixin;
 
-},{"./EventPluginHub":77}],117:[function(require,module,exports){
+},{"./EventPluginHub":32}],72:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -15180,7 +11469,7 @@ var ReactEventListener = {
 
 module.exports = ReactEventListener;
 
-},{"./EventListener":76,"./ExecutionEnvironment":81,"./Object.assign":86,"./PooledClass":87,"./ReactInstanceHandles":120,"./ReactMount":123,"./ReactUpdates":139,"./getEventTarget":177,"./getUnboundedScrollPosition":182}],118:[function(require,module,exports){
+},{"./EventListener":31,"./ExecutionEnvironment":36,"./Object.assign":41,"./PooledClass":42,"./ReactInstanceHandles":75,"./ReactMount":78,"./ReactUpdates":94,"./getEventTarget":132,"./getUnboundedScrollPosition":137}],73:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -15220,7 +11509,7 @@ var ReactInjection = {
 
 module.exports = ReactInjection;
 
-},{"./DOMProperty":70,"./EventPluginHub":77,"./ReactBrowserEventEmitter":90,"./ReactComponent":92,"./ReactCompositeComponent":94,"./ReactEmptyComponent":114,"./ReactNativeComponent":126,"./ReactPerf":128,"./ReactRootIndex":135,"./ReactUpdates":139}],119:[function(require,module,exports){
+},{"./DOMProperty":25,"./EventPluginHub":32,"./ReactBrowserEventEmitter":45,"./ReactComponent":47,"./ReactCompositeComponent":49,"./ReactEmptyComponent":69,"./ReactNativeComponent":81,"./ReactPerf":83,"./ReactRootIndex":90,"./ReactUpdates":94}],74:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -15356,7 +11645,7 @@ var ReactInputSelection = {
 
 module.exports = ReactInputSelection;
 
-},{"./ReactDOMSelection":106,"./containsNode":161,"./focusNode":171,"./getActiveElement":173}],120:[function(require,module,exports){
+},{"./ReactDOMSelection":61,"./containsNode":116,"./focusNode":126,"./getActiveElement":128}],75:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -15691,7 +11980,7 @@ var ReactInstanceHandles = {
 module.exports = ReactInstanceHandles;
 
 }).call(this,require('_process'))
-},{"./ReactRootIndex":135,"./invariant":186,"_process":1}],121:[function(require,module,exports){
+},{"./ReactRootIndex":90,"./invariant":141,"_process":1}],76:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -15938,7 +12227,7 @@ ReactLegacyElementFactory._isLegacyCallWarningEnabled = true;
 module.exports = ReactLegacyElementFactory;
 
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":96,"./invariant":186,"./monitorCodeUse":196,"./warning":205,"_process":1}],122:[function(require,module,exports){
+},{"./ReactCurrentOwner":51,"./invariant":141,"./monitorCodeUse":151,"./warning":160,"_process":1}],77:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -15986,7 +12275,7 @@ var ReactMarkupChecksum = {
 
 module.exports = ReactMarkupChecksum;
 
-},{"./adler32":158}],123:[function(require,module,exports){
+},{"./adler32":113}],78:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -16684,7 +12973,7 @@ ReactMount.renderComponent = deprecated(
 module.exports = ReactMount;
 
 }).call(this,require('_process'))
-},{"./DOMProperty":70,"./ReactBrowserEventEmitter":90,"./ReactCurrentOwner":96,"./ReactElement":112,"./ReactInstanceHandles":120,"./ReactLegacyElement":121,"./ReactPerf":128,"./containsNode":161,"./deprecated":166,"./getReactRootElementInContainer":180,"./instantiateReactComponent":185,"./invariant":186,"./shouldUpdateReactComponent":202,"./warning":205,"_process":1}],124:[function(require,module,exports){
+},{"./DOMProperty":25,"./ReactBrowserEventEmitter":45,"./ReactCurrentOwner":51,"./ReactElement":67,"./ReactInstanceHandles":75,"./ReactLegacyElement":76,"./ReactPerf":83,"./containsNode":116,"./deprecated":121,"./getReactRootElementInContainer":135,"./instantiateReactComponent":140,"./invariant":141,"./shouldUpdateReactComponent":157,"./warning":160,"_process":1}],79:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -17112,7 +13401,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 
-},{"./ReactComponent":92,"./ReactMultiChildUpdateTypes":125,"./flattenChildren":170,"./instantiateReactComponent":185,"./shouldUpdateReactComponent":202}],125:[function(require,module,exports){
+},{"./ReactComponent":47,"./ReactMultiChildUpdateTypes":80,"./flattenChildren":125,"./instantiateReactComponent":140,"./shouldUpdateReactComponent":157}],80:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -17145,7 +13434,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 
 module.exports = ReactMultiChildUpdateTypes;
 
-},{"./keyMirror":192}],126:[function(require,module,exports){
+},{"./keyMirror":147}],81:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -17218,7 +13507,7 @@ var ReactNativeComponent = {
 module.exports = ReactNativeComponent;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./invariant":186,"_process":1}],127:[function(require,module,exports){
+},{"./Object.assign":41,"./invariant":141,"_process":1}],82:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -17374,7 +13663,7 @@ var ReactOwner = {
 module.exports = ReactOwner;
 
 }).call(this,require('_process'))
-},{"./emptyObject":168,"./invariant":186,"_process":1}],128:[function(require,module,exports){
+},{"./emptyObject":123,"./invariant":141,"_process":1}],83:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -17458,7 +13747,7 @@ function _noMeasure(objName, fnName, func) {
 module.exports = ReactPerf;
 
 }).call(this,require('_process'))
-},{"_process":1}],129:[function(require,module,exports){
+},{"_process":1}],84:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -17625,7 +13914,7 @@ var ReactPropTransferer = {
 module.exports = ReactPropTransferer;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./emptyFunction":167,"./invariant":186,"./joinClasses":191,"./warning":205,"_process":1}],130:[function(require,module,exports){
+},{"./Object.assign":41,"./emptyFunction":122,"./invariant":141,"./joinClasses":146,"./warning":160,"_process":1}],85:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -17653,7 +13942,7 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = ReactPropTypeLocationNames;
 
 }).call(this,require('_process'))
-},{"_process":1}],131:[function(require,module,exports){
+},{"_process":1}],86:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -17677,7 +13966,7 @@ var ReactPropTypeLocations = keyMirror({
 
 module.exports = ReactPropTypeLocations;
 
-},{"./keyMirror":192}],132:[function(require,module,exports){
+},{"./keyMirror":147}],87:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18031,7 +14320,7 @@ function getPreciseType(propValue) {
 
 module.exports = ReactPropTypes;
 
-},{"./ReactElement":112,"./ReactPropTypeLocationNames":130,"./deprecated":166,"./emptyFunction":167}],133:[function(require,module,exports){
+},{"./ReactElement":67,"./ReactPropTypeLocationNames":85,"./deprecated":121,"./emptyFunction":122}],88:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18087,7 +14376,7 @@ PooledClass.addPoolingTo(ReactPutListenerQueue);
 
 module.exports = ReactPutListenerQueue;
 
-},{"./Object.assign":86,"./PooledClass":87,"./ReactBrowserEventEmitter":90}],134:[function(require,module,exports){
+},{"./Object.assign":41,"./PooledClass":42,"./ReactBrowserEventEmitter":45}],89:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18263,7 +14552,7 @@ PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
 
-},{"./CallbackQueue":65,"./Object.assign":86,"./PooledClass":87,"./ReactBrowserEventEmitter":90,"./ReactInputSelection":119,"./ReactPutListenerQueue":133,"./Transaction":155}],135:[function(require,module,exports){
+},{"./CallbackQueue":20,"./Object.assign":41,"./PooledClass":42,"./ReactBrowserEventEmitter":45,"./ReactInputSelection":74,"./ReactPutListenerQueue":88,"./Transaction":110}],90:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18294,7 +14583,7 @@ var ReactRootIndex = {
 
 module.exports = ReactRootIndex;
 
-},{}],136:[function(require,module,exports){
+},{}],91:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -18374,7 +14663,7 @@ module.exports = {
 };
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./ReactInstanceHandles":120,"./ReactMarkupChecksum":122,"./ReactServerRenderingTransaction":137,"./instantiateReactComponent":185,"./invariant":186,"_process":1}],137:[function(require,module,exports){
+},{"./ReactElement":67,"./ReactInstanceHandles":75,"./ReactMarkupChecksum":77,"./ReactServerRenderingTransaction":92,"./instantiateReactComponent":140,"./invariant":141,"_process":1}],92:[function(require,module,exports){
 /**
  * Copyright 2014, Facebook, Inc.
  * All rights reserved.
@@ -18487,7 +14776,7 @@ PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
 
-},{"./CallbackQueue":65,"./Object.assign":86,"./PooledClass":87,"./ReactPutListenerQueue":133,"./Transaction":155,"./emptyFunction":167}],138:[function(require,module,exports){
+},{"./CallbackQueue":20,"./Object.assign":41,"./PooledClass":42,"./ReactPutListenerQueue":88,"./Transaction":110,"./emptyFunction":122}],93:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18593,7 +14882,7 @@ ReactTextComponentFactory.type = ReactTextComponent;
 
 module.exports = ReactTextComponentFactory;
 
-},{"./DOMPropertyOperations":71,"./Object.assign":86,"./ReactComponent":92,"./ReactElement":112,"./escapeTextForBrowser":169}],139:[function(require,module,exports){
+},{"./DOMPropertyOperations":26,"./Object.assign":41,"./ReactComponent":47,"./ReactElement":67,"./escapeTextForBrowser":124}],94:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -18883,7 +15172,7 @@ var ReactUpdates = {
 module.exports = ReactUpdates;
 
 }).call(this,require('_process'))
-},{"./CallbackQueue":65,"./Object.assign":86,"./PooledClass":87,"./ReactCurrentOwner":96,"./ReactPerf":128,"./Transaction":155,"./invariant":186,"./warning":205,"_process":1}],140:[function(require,module,exports){
+},{"./CallbackQueue":20,"./Object.assign":41,"./PooledClass":42,"./ReactCurrentOwner":51,"./ReactPerf":83,"./Transaction":110,"./invariant":141,"./warning":160,"_process":1}],95:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -18975,7 +15264,7 @@ var SVGDOMPropertyConfig = {
 
 module.exports = SVGDOMPropertyConfig;
 
-},{"./DOMProperty":70}],141:[function(require,module,exports){
+},{"./DOMProperty":25}],96:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19170,7 +15459,7 @@ var SelectEventPlugin = {
 
 module.exports = SelectEventPlugin;
 
-},{"./EventConstants":75,"./EventPropagators":80,"./ReactInputSelection":119,"./SyntheticEvent":147,"./getActiveElement":173,"./isTextInputElement":189,"./keyOf":193,"./shallowEqual":201}],142:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPropagators":35,"./ReactInputSelection":74,"./SyntheticEvent":102,"./getActiveElement":128,"./isTextInputElement":144,"./keyOf":148,"./shallowEqual":156}],97:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19201,7 +15490,7 @@ var ServerReactRootIndex = {
 
 module.exports = ServerReactRootIndex;
 
-},{}],143:[function(require,module,exports){
+},{}],98:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -19629,7 +15918,7 @@ var SimpleEventPlugin = {
 module.exports = SimpleEventPlugin;
 
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./EventPluginUtils":79,"./EventPropagators":80,"./SyntheticClipboardEvent":144,"./SyntheticDragEvent":146,"./SyntheticEvent":147,"./SyntheticFocusEvent":148,"./SyntheticKeyboardEvent":150,"./SyntheticMouseEvent":151,"./SyntheticTouchEvent":152,"./SyntheticUIEvent":153,"./SyntheticWheelEvent":154,"./getEventCharCode":174,"./invariant":186,"./keyOf":193,"./warning":205,"_process":1}],144:[function(require,module,exports){
+},{"./EventConstants":30,"./EventPluginUtils":34,"./EventPropagators":35,"./SyntheticClipboardEvent":99,"./SyntheticDragEvent":101,"./SyntheticEvent":102,"./SyntheticFocusEvent":103,"./SyntheticKeyboardEvent":105,"./SyntheticMouseEvent":106,"./SyntheticTouchEvent":107,"./SyntheticUIEvent":108,"./SyntheticWheelEvent":109,"./getEventCharCode":129,"./invariant":141,"./keyOf":148,"./warning":160,"_process":1}],99:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19675,7 +15964,7 @@ SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 module.exports = SyntheticClipboardEvent;
 
 
-},{"./SyntheticEvent":147}],145:[function(require,module,exports){
+},{"./SyntheticEvent":102}],100:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19721,7 +16010,7 @@ SyntheticEvent.augmentClass(
 module.exports = SyntheticCompositionEvent;
 
 
-},{"./SyntheticEvent":147}],146:[function(require,module,exports){
+},{"./SyntheticEvent":102}],101:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19760,7 +16049,7 @@ SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
 
-},{"./SyntheticMouseEvent":151}],147:[function(require,module,exports){
+},{"./SyntheticMouseEvent":106}],102:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19918,7 +16207,7 @@ PooledClass.addPoolingTo(SyntheticEvent, PooledClass.threeArgumentPooler);
 
 module.exports = SyntheticEvent;
 
-},{"./Object.assign":86,"./PooledClass":87,"./emptyFunction":167,"./getEventTarget":177}],148:[function(require,module,exports){
+},{"./Object.assign":41,"./PooledClass":42,"./emptyFunction":122,"./getEventTarget":132}],103:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -19957,7 +16246,7 @@ SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
 
-},{"./SyntheticUIEvent":153}],149:[function(require,module,exports){
+},{"./SyntheticUIEvent":108}],104:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  * All rights reserved.
@@ -20004,7 +16293,7 @@ SyntheticEvent.augmentClass(
 module.exports = SyntheticInputEvent;
 
 
-},{"./SyntheticEvent":147}],150:[function(require,module,exports){
+},{"./SyntheticEvent":102}],105:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20091,7 +16380,7 @@ SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
 
-},{"./SyntheticUIEvent":153,"./getEventCharCode":174,"./getEventKey":175,"./getEventModifierState":176}],151:[function(require,module,exports){
+},{"./SyntheticUIEvent":108,"./getEventCharCode":129,"./getEventKey":130,"./getEventModifierState":131}],106:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20174,7 +16463,7 @@ SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
 
-},{"./SyntheticUIEvent":153,"./ViewportMetrics":156,"./getEventModifierState":176}],152:[function(require,module,exports){
+},{"./SyntheticUIEvent":108,"./ViewportMetrics":111,"./getEventModifierState":131}],107:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20222,7 +16511,7 @@ SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
 
-},{"./SyntheticUIEvent":153,"./getEventModifierState":176}],153:[function(require,module,exports){
+},{"./SyntheticUIEvent":108,"./getEventModifierState":131}],108:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20284,7 +16573,7 @@ SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
 
-},{"./SyntheticEvent":147,"./getEventTarget":177}],154:[function(require,module,exports){
+},{"./SyntheticEvent":102,"./getEventTarget":132}],109:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20345,7 +16634,7 @@ SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
 
-},{"./SyntheticMouseEvent":151}],155:[function(require,module,exports){
+},{"./SyntheticMouseEvent":106}],110:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -20586,7 +16875,7 @@ var Transaction = {
 module.exports = Transaction;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],156:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],111:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20618,7 +16907,7 @@ var ViewportMetrics = {
 
 module.exports = ViewportMetrics;
 
-},{"./getUnboundedScrollPosition":182}],157:[function(require,module,exports){
+},{"./getUnboundedScrollPosition":137}],112:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -20684,7 +16973,7 @@ function accumulateInto(current, next) {
 module.exports = accumulateInto;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],158:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],113:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20718,7 +17007,7 @@ function adler32(data) {
 
 module.exports = adler32;
 
-},{}],159:[function(require,module,exports){
+},{}],114:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20750,7 +17039,7 @@ function camelize(string) {
 
 module.exports = camelize;
 
-},{}],160:[function(require,module,exports){
+},{}],115:[function(require,module,exports){
 /**
  * Copyright 2014, Facebook, Inc.
  * All rights reserved.
@@ -20792,7 +17081,7 @@ function camelizeStyleName(string) {
 
 module.exports = camelizeStyleName;
 
-},{"./camelize":159}],161:[function(require,module,exports){
+},{"./camelize":114}],116:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20836,7 +17125,7 @@ function containsNode(outerNode, innerNode) {
 
 module.exports = containsNode;
 
-},{"./isTextNode":190}],162:[function(require,module,exports){
+},{"./isTextNode":145}],117:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -20922,7 +17211,7 @@ function createArrayFrom(obj) {
 
 module.exports = createArrayFrom;
 
-},{"./toArray":203}],163:[function(require,module,exports){
+},{"./toArray":158}],118:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -20983,7 +17272,7 @@ function createFullPageComponent(tag) {
 module.exports = createFullPageComponent;
 
 }).call(this,require('_process'))
-},{"./ReactCompositeComponent":94,"./ReactElement":112,"./invariant":186,"_process":1}],164:[function(require,module,exports){
+},{"./ReactCompositeComponent":49,"./ReactElement":67,"./invariant":141,"_process":1}],119:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -21073,7 +17362,7 @@ function createNodesFromMarkup(markup, handleScript) {
 module.exports = createNodesFromMarkup;
 
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":81,"./createArrayFrom":162,"./getMarkupWrap":178,"./invariant":186,"_process":1}],165:[function(require,module,exports){
+},{"./ExecutionEnvironment":36,"./createArrayFrom":117,"./getMarkupWrap":133,"./invariant":141,"_process":1}],120:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21131,7 +17420,7 @@ function dangerousStyleValue(name, value) {
 
 module.exports = dangerousStyleValue;
 
-},{"./CSSProperty":63}],166:[function(require,module,exports){
+},{"./CSSProperty":18}],121:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -21182,7 +17471,7 @@ function deprecated(namespace, oldName, newName, ctx, fn) {
 module.exports = deprecated;
 
 }).call(this,require('_process'))
-},{"./Object.assign":86,"./warning":205,"_process":1}],167:[function(require,module,exports){
+},{"./Object.assign":41,"./warning":160,"_process":1}],122:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21216,7 +17505,7 @@ emptyFunction.thatReturnsArgument = function(arg) { return arg; };
 
 module.exports = emptyFunction;
 
-},{}],168:[function(require,module,exports){
+},{}],123:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -21240,7 +17529,7 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = emptyObject;
 
 }).call(this,require('_process'))
-},{"_process":1}],169:[function(require,module,exports){
+},{"_process":1}],124:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21281,7 +17570,7 @@ function escapeTextForBrowser(text) {
 
 module.exports = escapeTextForBrowser;
 
-},{}],170:[function(require,module,exports){
+},{}],125:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -21350,7 +17639,7 @@ function flattenChildren(children) {
 module.exports = flattenChildren;
 
 }).call(this,require('_process'))
-},{"./ReactTextComponent":138,"./traverseAllChildren":204,"./warning":205,"_process":1}],171:[function(require,module,exports){
+},{"./ReactTextComponent":93,"./traverseAllChildren":159,"./warning":160,"_process":1}],126:[function(require,module,exports){
 /**
  * Copyright 2014, Facebook, Inc.
  * All rights reserved.
@@ -21379,7 +17668,7 @@ function focusNode(node) {
 
 module.exports = focusNode;
 
-},{}],172:[function(require,module,exports){
+},{}],127:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21410,7 +17699,7 @@ var forEachAccumulated = function(arr, cb, scope) {
 
 module.exports = forEachAccumulated;
 
-},{}],173:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21439,7 +17728,7 @@ function getActiveElement() /*?DOMElement*/ {
 
 module.exports = getActiveElement;
 
-},{}],174:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21491,7 +17780,7 @@ function getEventCharCode(nativeEvent) {
 
 module.exports = getEventCharCode;
 
-},{}],175:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21596,7 +17885,7 @@ function getEventKey(nativeEvent) {
 
 module.exports = getEventKey;
 
-},{"./getEventCharCode":174}],176:[function(require,module,exports){
+},{"./getEventCharCode":129}],131:[function(require,module,exports){
 /**
  * Copyright 2013 Facebook, Inc.
  * All rights reserved.
@@ -21643,7 +17932,7 @@ function getEventModifierState(nativeEvent) {
 
 module.exports = getEventModifierState;
 
-},{}],177:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21674,7 +17963,7 @@ function getEventTarget(nativeEvent) {
 
 module.exports = getEventTarget;
 
-},{}],178:[function(require,module,exports){
+},{}],133:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -21791,7 +18080,7 @@ function getMarkupWrap(nodeName) {
 module.exports = getMarkupWrap;
 
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":81,"./invariant":186,"_process":1}],179:[function(require,module,exports){
+},{"./ExecutionEnvironment":36,"./invariant":141,"_process":1}],134:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21866,7 +18155,7 @@ function getNodeForCharacterOffset(root, offset) {
 
 module.exports = getNodeForCharacterOffset;
 
-},{}],180:[function(require,module,exports){
+},{}],135:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21901,7 +18190,7 @@ function getReactRootElementInContainer(container) {
 
 module.exports = getReactRootElementInContainer;
 
-},{}],181:[function(require,module,exports){
+},{}],136:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21938,7 +18227,7 @@ function getTextContentAccessor() {
 
 module.exports = getTextContentAccessor;
 
-},{"./ExecutionEnvironment":81}],182:[function(require,module,exports){
+},{"./ExecutionEnvironment":36}],137:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -21978,7 +18267,7 @@ function getUnboundedScrollPosition(scrollable) {
 
 module.exports = getUnboundedScrollPosition;
 
-},{}],183:[function(require,module,exports){
+},{}],138:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22011,7 +18300,7 @@ function hyphenate(string) {
 
 module.exports = hyphenate;
 
-},{}],184:[function(require,module,exports){
+},{}],139:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22052,7 +18341,7 @@ function hyphenateStyleName(string) {
 
 module.exports = hyphenateStyleName;
 
-},{"./hyphenate":183}],185:[function(require,module,exports){
+},{"./hyphenate":138}],140:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -22166,7 +18455,7 @@ function instantiateReactComponent(element, parentCompositeType) {
 module.exports = instantiateReactComponent;
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./ReactEmptyComponent":114,"./ReactLegacyElement":121,"./ReactNativeComponent":126,"./warning":205,"_process":1}],186:[function(require,module,exports){
+},{"./ReactElement":67,"./ReactEmptyComponent":69,"./ReactLegacyElement":76,"./ReactNativeComponent":81,"./warning":160,"_process":1}],141:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -22223,7 +18512,7 @@ var invariant = function(condition, format, a, b, c, d, e, f) {
 module.exports = invariant;
 
 }).call(this,require('_process'))
-},{"_process":1}],187:[function(require,module,exports){
+},{"_process":1}],142:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22288,7 +18577,7 @@ function isEventSupported(eventNameSuffix, capture) {
 
 module.exports = isEventSupported;
 
-},{"./ExecutionEnvironment":81}],188:[function(require,module,exports){
+},{"./ExecutionEnvironment":36}],143:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22316,7 +18605,7 @@ function isNode(object) {
 
 module.exports = isNode;
 
-},{}],189:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22360,7 +18649,7 @@ function isTextInputElement(elem) {
 
 module.exports = isTextInputElement;
 
-},{}],190:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22385,7 +18674,7 @@ function isTextNode(object) {
 
 module.exports = isTextNode;
 
-},{"./isNode":188}],191:[function(require,module,exports){
+},{"./isNode":143}],146:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22426,7 +18715,7 @@ function joinClasses(className/*, ... */) {
 
 module.exports = joinClasses;
 
-},{}],192:[function(require,module,exports){
+},{}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -22481,7 +18770,7 @@ var keyMirror = function(obj) {
 module.exports = keyMirror;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],193:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],148:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22517,7 +18806,7 @@ var keyOf = function(oneKeyObj) {
 
 module.exports = keyOf;
 
-},{}],194:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22570,7 +18859,7 @@ function mapObject(object, callback, context) {
 
 module.exports = mapObject;
 
-},{}],195:[function(require,module,exports){
+},{}],150:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22604,7 +18893,7 @@ function memoizeStringOnly(callback) {
 
 module.exports = memoizeStringOnly;
 
-},{}],196:[function(require,module,exports){
+},{}],151:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -22638,7 +18927,7 @@ function monitorCodeUse(eventName, data) {
 module.exports = monitorCodeUse;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],197:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],152:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -22678,7 +18967,7 @@ function onlyChild(children) {
 module.exports = onlyChild;
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./invariant":186,"_process":1}],198:[function(require,module,exports){
+},{"./ReactElement":67,"./invariant":141,"_process":1}],153:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22706,7 +18995,7 @@ if (ExecutionEnvironment.canUseDOM) {
 
 module.exports = performance || {};
 
-},{"./ExecutionEnvironment":81}],199:[function(require,module,exports){
+},{"./ExecutionEnvironment":36}],154:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22734,7 +19023,7 @@ var performanceNow = performance.now.bind(performance);
 
 module.exports = performanceNow;
 
-},{"./performance":198}],200:[function(require,module,exports){
+},{"./performance":153}],155:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22812,7 +19101,7 @@ if (ExecutionEnvironment.canUseDOM) {
 
 module.exports = setInnerHTML;
 
-},{"./ExecutionEnvironment":81}],201:[function(require,module,exports){
+},{"./ExecutionEnvironment":36}],156:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22856,7 +19145,7 @@ function shallowEqual(objA, objB) {
 
 module.exports = shallowEqual;
 
-},{}],202:[function(require,module,exports){
+},{}],157:[function(require,module,exports){
 /**
  * Copyright 2013-2014, Facebook, Inc.
  * All rights reserved.
@@ -22894,7 +19183,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 
 module.exports = shouldUpdateReactComponent;
 
-},{}],203:[function(require,module,exports){
+},{}],158:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -22966,7 +19255,7 @@ function toArray(obj) {
 module.exports = toArray;
 
 }).call(this,require('_process'))
-},{"./invariant":186,"_process":1}],204:[function(require,module,exports){
+},{"./invariant":141,"_process":1}],159:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-2014, Facebook, Inc.
@@ -23149,7 +19438,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 module.exports = traverseAllChildren;
 
 }).call(this,require('_process'))
-},{"./ReactElement":112,"./ReactInstanceHandles":120,"./invariant":186,"_process":1}],205:[function(require,module,exports){
+},{"./ReactElement":67,"./ReactInstanceHandles":75,"./invariant":141,"_process":1}],160:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014, Facebook, Inc.
@@ -23194,18 +19483,152 @@ if ("production" !== process.env.NODE_ENV) {
 module.exports = warning;
 
 }).call(this,require('_process'))
-},{"./emptyFunction":167,"_process":1}],206:[function(require,module,exports){
+},{"./emptyFunction":122,"_process":1}],161:[function(require,module,exports){
 module.exports = require('./lib/React');
 
-},{"./lib/React":88}],207:[function(require,module,exports){
-/** @jsx React.DOM */
-var React = require('react'),
-    RBS = require('react-bootstrap');
+},{"./lib/React":43}],162:[function(require,module,exports){
+var React = require('react');
+var ButtonGroup = require('react-bootstrap/ButtonGroup');
+var Button = require('react-bootstrap/Button');
+var Glyphicon = require('react-bootstrap/Glyphicon');
+
+module.exports = React.createClass({
+  displayName: 'Main Menu',
+  render: function () {
+    return (
+      React.createElement(ButtonGroup, {justified: true, className: "main-menu"}, 
+        React.createElement(ButtonGroup, null, React.createElement(Button, {bsSize: "large"}, React.createElement(Glyphicon, {glyph: "search"}))), 
+        React.createElement(ButtonGroup, null, React.createElement(Button, {bsSize: "large"}, React.createElement(Glyphicon, {glyph: "floppy-save"}))), 
+        React.createElement(ButtonGroup, null, React.createElement(Button, {bsSize: "large"}, React.createElement(Glyphicon, {glyph: "plus-sign"})))
+      )
+    );
+  }
+});
+},{"react":161,"react-bootstrap/Button":3,"react-bootstrap/ButtonGroup":4,"react-bootstrap/Glyphicon":5}],163:[function(require,module,exports){
+var React = require('react');
+var ListGroup = require('react-bootstrap/ListGroup');
+var ListGroupItem = require('react-bootstrap/ListGroupItem');
+var Input = require('react-bootstrap/Input');
+
+module.exports = React.createClass({displayName: 'exports',
+  getInitialState : function() {
+    return ({ clicks : 0 });
+  },
+  easterEgg : function() {
+    if (this.state.clicks >= 7) {
+      alert("Easter Egg? Yeah, you totes found it! Congrats! Now have a cookie...");
+      this.setState({clicks : 0});
+    }
+    else {
+      this.setState({ clicks : this.state.clicks + 1 });  
+    }
+  },
+  render : function() {
+    return (
+      React.createElement("div", {className: "container settings"}, 
+        React.createElement("h1", null, "Settings"), 
+        React.createElement(ListGroup, null, 
+          React.createElement(ListGroupItem, null, React.createElement(Input, {type: "checkbox", label: "Unlock marker"})), 
+          React.createElement(ListGroupItem, null, React.createElement(Input, {type: "checkbox", label: "Enable tap marker"})), 
+          React.createElement(ListGroupItem, null, React.createElement("a", {href: "#"}, "readme")), 
+          React.createElement(ListGroupItem, null, React.createElement("a", {className: "nameless", href: "#", onClick: this.easterEgg}, "version: " + this.props.version))
+        )
+      )
+    );
+  }
+});
+},{"react":161,"react-bootstrap/Input":6,"react-bootstrap/ListGroup":7,"react-bootstrap/ListGroupItem":8}],164:[function(require,module,exports){
+///////////////////////////////////////////////////////////////////////////////
+//
+// Handles displaying and updating the title bar
+//
+///////////////////////////////////////////////////////////////////////////////
+var React = require('react');
+var Button = require('react-bootstrap/Button');
+
+module.exports = React.createClass({displayName: 'exports',
+  render : function() {
+    return (
+      React.createElement("div", {id: "title-bar"}, 
+        React.createElement("div", {id: "hawkID-display"}, React.createElement("span", {id: "hawkID"}, this.props.hawkid)), 
+        React.createElement(Button, {bsStyle: "default", id: "settings-toggle", onClick: this.props.toggleMenu}, React.createElement("img", {src: "./images/icon-menu.svg", alt: "Settings"}))
+      )
+    );
+  }
+});
+},{"react":161,"react-bootstrap/Button":3}],165:[function(require,module,exports){
+// core
+var React = require('react');
+var snap;
+
+// require components
+var TitleBar = require('./components/titleBar');
+var MainMenu = require('./components/mainMenu');
+var Settings = require('./components/settings');
+
+// maps
+var map;
+
+// main content component
+var Content = React.createClass({
+  displayName: "Main Content",
+  getInitialState : function() {
+    return ({});
+  },
+  toggleMenu : function() {
+    if (snap.state().state === "right") {
+      snap.close();
+    }
+    else {
+      snap.open("right");
+    }
+  },
+  componentDidMount: function () {
+
+    // initialize the map
+    var cvs = this.refs["content-map-canvas"].getDOMNode();
+    cvs.style.height = Math.max(document.documentElement.clientHeight, window.innerHeight || 0) - 100 + "px";
+
+    map = new google.maps.Map(
+      cvs,
+      { 
+        zoom : 17,
+        center : new google.maps.LatLng(43.042825, -89.292592)
+        // 4Lakes lat lng!
+      }
+    );
+
+    snap = new Snap({
+      element : this.refs["content"].getDOMNode(),
+      touchToDrag : false,
+      hyperextensible : false,
+      tapToClose : false
+    });
+
+    // initialize firebase?
+  },
+  render : function() {
+    return(
+      React.createElement("div", null, 
+        React.createElement("div", {className: "snap-drawers"}, 
+          React.createElement("div", {className: "snap-drawer snap-drawer-left"}), 
+          React.createElement("div", {className: "snap-drawer snap-drawer-right inverse"}, 
+            React.createElement(Settings, {version: "0.9.0a"})
+          )
+        ), 
+        React.createElement("div", {id: "content", ref: "content", className: "snap-content"}, 
+          React.createElement(TitleBar, {snap: snap, hawkid: "TEST RALF", toggleMenu: this.toggleMenu}), 
+          React.createElement("div", {ref: "content-map-canvas", id: "content-map-canvas"}), 
+          React.createElement("div", null, 
+            React.createElement(MainMenu, null)
+          )
+        )
+      )
+    );
+  }
+});
 
 
-var Title = (
-  React.createElement(PageHeader, null, "Tri-hawk-ulate Admin")
-);
-
-React.render(React.createElement(Title, null), document.body);
-},{"react":206,"react-bootstrap":51}]},{},[207]);
+// render it all!
+React.render(React.createElement(Content, null), document.body);
+},{"./components/mainMenu":162,"./components/settings":163,"./components/titleBar":164,"react":161}]},{},[165]);

@@ -10,12 +10,16 @@
   <link rel="apple-touch-icon-precomposed" href="./images/hawk-shortcut.png">
 
   <link rel="shortcut icon" href="./images/hawk-shortcut.png"> 
-  <link rel="stylesheet" type="text/css" href="./style/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="./libs/snapjs/snap.css">
   <link rel="stylesheet" type="text/css" href="./style/design.css">
+
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry"></script>
 </head>
 <body>
 
+<!-- old interface -->
+<!--
   <div class='hide modal' id='modal-hawkid'>
     <div class="modal-container">
       <p>Which hawk are you tracking?</p>
@@ -75,7 +79,6 @@
       <div class="hide" id='settings-menu'></div>
     </div>
 
-    <!-- MAP CANVAS -->
     <div id='map-canvas'></div>
 
     <div class="driver-container">
@@ -88,12 +91,14 @@
           <span id="glyph" class="glyphicon glyphicon-search"></span>
         </div>
         <div class="driver-div" id="saveMe"><span id="floppy" class="glyphicon glyphicon-floppy-save"></span></div>
-        <!--<div class="driver-div" id="downloadMe"><span class="glyphicon glyphicon-export"></span></div>-->
         <div class="driver-div" id="clearMe"><span class="glyphicon glyphicon-plus-sign"></span></div>
       
     </div>
 
   </div>
+  -->
 
-  <script type="text/javascript" src='./bundle.min.js?0810'></script>
+  <script type="text/javascript" src="./libs/snapjs/snap.min.js"></script>
+  <script type="text/javascript" src="./bundle.js"></script>
+  <!--<script type="text/javascript" src='./bundle.min.js?0900'></script>-->
 </body>

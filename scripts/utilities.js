@@ -29,42 +29,6 @@ exports.computeCenter = function(map, edges) {
 }
 
 //
-// Computes the point at which two Polylines intersect by taking both 
-// heading LatLng objects, projecting them to Points, then computing
-// intersetion by using determinants. 
-//
-// Returns the corresponding LatLng object of the intersection point.
-//
-//
-// needs to check if computer points lie in the range denoted by the points
-// also needs to account for "bottom" being 0 meaning the two lines are
-// parallel
-//
-// This method assumes each line segment is actually a line
-//
-exports.intersectsByDeterminants = function(map, lat1,lat2, lat3,lat4) {
-  var bottom, x,y, p1,p2,p3,p4, out;
-
-  // convert LatLng to points
-  p1 = map.getProjection().fromLatLngToPoint(lat1);
-  p2 = map.getProjection().fromLatLngToPoint(lat2);
-  p3 = map.getProjection().fromLatLngToPoint(lat3);
-  p4 = map.getProjection().fromLatLngToPoint(lat4);
-
-  bottom = (((p1.x-p2.x)*(p3.y-p4.y)) - ((p1.y-p2.y)*(p3.x-p4.x)));
-  x = ((((p1.x*p2.y) - (p1.y*p2.x))*(p3.x - p4.x)) - ((p1.x-p2.x)*((p3.x*p4.y) - (p3.y*p4.x))));
-  y = ((((p1.x*p2.y) - (p1.y*p2.x))*(p3.y - p4.y)) - ((p1.y-p2.y)*((p3.x*p4.y) - (p3.y*p4.x))));
-
-  x = x / bottom;
-  y = y / bottom;
-
-  // return the intersection point
-  out = new google.maps.Point(x,y);
-  return map.getProjection().fromPointToLatLng(out);
-  
-}
-
-//
 // Tries to compute the intersection point of two line segments by solving
 // a linear combination.
 //
@@ -107,23 +71,6 @@ exports.intersectsByLinearAlgebra = function(map, lat1,lat2, lat3,lat4) {
   // otherwise, there are no intersections
   return false;  
   
-}
-
-//
-// Given an origin LatLng object, a heading, and a distance, returns
-// an array of two calculated LatLng objects along the direction of the azimuth
-//
-exports.computeHeadings = function(origin, azimuth, dist) {
-  var positive, negative, dir;
-  azimuth = (azimuth >= 360) ? azimuth - 360 : azimuth;
-
-  dir = 180 + azimuth;
-  dir = (dir >= 360) ? dir - 360 : dir;
-
-  positive = google.maps.geometry.spherical.computeOffset(origin, dist, azimuth);
-  negative = google.maps.geometry.spherical.computeOffset(origin, dist, dir);
-
-  return [negative, positive];
 }
 
 //
