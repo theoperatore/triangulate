@@ -138,23 +138,16 @@ var Content = React.createClass({
     });
 
     // setup collaboration sessions
-    sessiondb.once("value", function(snapshot) {
-      var out = [];
-      var keys;
-
-      if (snapshot.val()) {
-        keys = Object.keys(snapshot.val());
-        keys.forEach(function(key) {
-
-          var session = snapshot.val()[key].id;
-          out.push(session);
-
-        });
-
-        this.setState({ collaborationSessions : out });
-      }
+    sessiondb.on("child_added", function(snapshot) {
+      var out = this.state.collaborationSessions;
+      var id = snapshot.val().id;
+      out.push(id);
+      this.setState({ collaborationSessions : out });
 
     }.bind(this));
+
+    // pan to saved mark locations
+    dbUtils.panToLastMark.call(this, map, db);
 
     this.setState({ app : tmp });
   },
@@ -260,13 +253,52 @@ var Content = React.createClass({
     snap.close();
   },
   handleCollaborate : function(id) {
+    var tmp = this.state.app;
+    var old = tmp.sessionid;
+
     console.log("collaborate id", id);
     this.toggleCollaborationModal();
     snap.close();
 
-    // re-initialize app
+    // visually erase saved Markers
+    tmp.marks.forEach(function(mark) {
+      mark.mark.setMap(null);
+      mark.line.setMap(null);
+      mark.mark = null;
+      mark.line = null;
+      mark.iinfo = null;
+    });
+    if (tmp.apiPolygon) tmp.apiPolygon.setMap(null);
+    if (tmp.apiCircle) tmp.apiCircle.setMap(null);
+    if (tmp.apiCMark) tmp.apiCMark.setMap(null);
+    tmp.marks.length = 0;
+    tmp.intersects.length = 0;
+    tmp.triCenter = {};
+    tmp.triDiameter = -1;
+    tmp.sessionid = id;
 
-    // set up firebase reads
+    // use old sessionID to remove old Firebase bindings
+    db.child(old).child('marks').off('child_added', dbUtils.add.bind(this, db, map));
+    db.child(old).child('marks').off('child_removed', dbUtils.remove.bind(this, db, map));
+    db.child(old).child('hawkID').off('child_changed', dbUtils.changeHawkid.bind(this));
+
+    // use new sessionID to create new Firebase bindings
+    db.child(id).child('marks').on('child_added', dbUtils.add.bind(this, db, map));
+    db.child(id).child('marks').on('child_removed', dbUtils.remove.bind(this, db, map));
+    db.child(id).child('hawkID').on('child_changed', dbUtils.changeHawkid.bind(this));
+
+    db.child(id).child('hawkID').once('value', function(snapshot) {
+      tmp.hawkid = snapshot.val();
+      if (tmp.hawkid === "" || !tmp.hawkid) {
+        this.setState({ needsHawkID : true });
+      }
+    }.bind(this));
+
+    // pan to mark bounds
+    dbUtils.panToLastMark.call(this, map, db);
+
+    localStorage.setItem("tri-hawk-ulate__sessionID", id);
+    this.setState({ app : tmp });
   },
   toggleHawkIDModal : function() { 
     this.setState({ needsHawkID : !this.state.needsHawkID }); 

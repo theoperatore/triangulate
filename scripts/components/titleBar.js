@@ -17,7 +17,7 @@ module.exports = React.createClass({
           <ButtonGroup>
             <Button bsSize="large" onClick={this.props.toggleHawkMenu}>
               <Glyphicon glyph="chevron-left" />
-              {"   " + this.props.hawkid}
+              {this.props.hawkid || "Start Tracking!"}
             </Button>
           </ButtonGroup>
           <ButtonGroup>

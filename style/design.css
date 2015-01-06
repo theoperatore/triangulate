@@ -95,6 +95,7 @@ html, body {
   clear:both;
 }
 
+.animal-info, .animal-info p { text-align: left; }
 
 
 .hide { display: none;}

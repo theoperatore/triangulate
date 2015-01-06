@@ -228,3 +228,28 @@ exports.changeHawkid = function(snap) {
   tmp.hawkid = id;
   this.setState({ app : tmp });
 }
+
+// pans the map to the area of triangulation
+// assumes a React context
+exports.panToLastMark = function(map, db) {
+  var tmp = this.state.app;
+
+  db.child(tmp.sessionid).once("value", function(snapshot) {
+    var val = snapshot.val();
+    var bounds = new google.maps.LatLngBounds();
+    var keys;
+
+    if (val) {
+      keys = Object.keys(val.marks);
+      keys.forEach(function(key) {
+        bounds.extend(new google.maps.LatLng(val.marks[key].lat, val.marks[key].lng));
+      });
+      
+      if (val.triCenter) {
+        bounds.extend(new google.maps.LatLng(val.triCenter.lat, val.triCenter.lng));
+      }
+
+      map.fitBounds(bounds);
+    }
+  });
+}
