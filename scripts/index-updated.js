@@ -482,7 +482,7 @@ var Content = React.createClass({
       <div>
         <div className="snap-drawers">
           <div className="snap-drawer snap-drawer-left inverse">
-            <CollaborationMenu toggleCollaborationModal={this.toggleCollaborationModal} onTrackNewHawk={this.handleTrackNewHawk} sessionID={this.state.app.sessionid}/>
+            <CollaborationMenu toggleCollaborationModal={this.toggleCollaborationModal} onTrackNewHawk={this.handleTrackNewHawk} app={this.state.app}/>
           </div>
           <div className="snap-drawer snap-drawer-right inverse">
             <SettingsMenu onSettingsChange={this.handleSettingsChange} settings={this.state.settings} version={this.state.version}/>

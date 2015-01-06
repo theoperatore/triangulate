@@ -103,6 +103,10 @@ function triangulate(db, map) {
   tmp.apiPolygon.setMap(map);
   tmp.apiCircle.setMap(map);
   tmp.apiCMark.setMap(map);
+  tmp.triCenter = {};
+  tmp.triCenter.lat = center.lat();
+  tmp.triCenter.lng = center.lng();
+  tmp.triDiameter = 2*radius;
 
   // set up event handlers
   google.maps.event.clearListeners(tmp.apiCircle, "drag");
@@ -197,14 +201,14 @@ exports.remove = function(db, map, snap) {
         if (tmp.apiCircle) tmp.apiCircle.setMap(null);
         if (tmp.apiCMark) tmp.apiCMark.setMap(null);
         tmp.triCenter = {};
-        tmp.triDiamter = null;
+        tmp.triDiameter = -1;
       }
 
       this.setState({ saveState : null });
       db.child(tmp.sessionid).update(
         { 
           "triCenter" : tmp.triCenter,
-          "triDiameter" : tmp.triDiameter || 0
+          "triDiameter" : tmp.triDiameter || -1
         }, function(err) {
           if (err) {
             this.setState({ saveState : "error", message : err });

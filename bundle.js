@@ -20378,38 +20378,77 @@ var Grid = require('react-bootstrap/Grid');
 var Row = require('react-bootstrap/Row');
 var Col = require('react-bootstrap/Col');
 var config = require('../../config');
+var triUtils = require('../triUtilities');
 
 module.exports = React.createClass({
   displayName: "CollaborationMenu",
   render : function() {
-    var date = new Date(parseInt(this.props.sessionID,10));
+    var date = new Date(parseInt(this.props.app.sessionid,10));
+    var marks = [];
+    var triCenter;
+    var triDiameter = this.props.app.triDiameter;
+
+    for (var i = 0; i < this.props.app.marks.length; i++) {
+      var dms = triUtils.convertToDMSFromLiteral(this.props.app.marks[i].mark.getPosition().lat(), this.props.app.marks[i].mark.getPosition().lng());
+      marks.push(
+        React.createElement(Row, {key: i}, 
+          React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, dms.lat)), 
+          React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, dms.lng))
+        )
+      );
+    }
+
+    if (this.props.app.triCenter && this.props.app.triCenter.lat) {
+      triCenter = triUtils.convertToDMSFromLiteral(this.props.app.triCenter.lat, this.props.app.triCenter.lng);
+    }
 
     return (
       React.createElement("div", {className: "container settings"}, 
-        React.createElement("h3", null, "Hawk Menu"), 
+        React.createElement("h3", null, config.animal + " Menu"), 
         React.createElement(ButtonGroup, {vertical: true}, 
           React.createElement(ButtonGroup, null, React.createElement(Button, {onClick: this.props.onTrackNewHawk, bsSize: "large"}, "Track New " + config.animal)), 
           React.createElement(ButtonGroup, null, React.createElement(Button, {onClick: this.props.toggleCollaborationModal, bsSize: "large"}, "Collaborate"))
         ), 
         React.createElement(Grid, {className: "animal-info", fluid: true}, 
           React.createElement(Row, null, 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, "sessionID:")), 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, this.props.sessionID))
+            React.createElement(Col, null, React.createElement("p", null, "current session info:"))
           ), 
           React.createElement(Row, null, 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, "date started:")), 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, date.toLocaleDateString()))
+            React.createElement(Col, {xs: 5, md: 5}, React.createElement("p", null, "sessionID:")), 
+            React.createElement(Col, {xs: 7, md: 7}, React.createElement("p", null, this.props.app.sessionid))
           ), 
           React.createElement(Row, null, 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, "time started:")), 
-            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, date.toLocaleTimeString()))
+            React.createElement(Col, {xs: 5, md: 5}, React.createElement("p", null, config.animal + " ID:")), 
+            React.createElement(Col, {xs: 7, md: 7}, React.createElement("p", null, this.props.app.hawkid))
+          ), 
+          React.createElement(Row, null, 
+            React.createElement(Col, {xs: 5, md: 5}, React.createElement("p", null, "start date:")), 
+            React.createElement(Col, {xs: 7, md: 7}, React.createElement("p", null, date.toLocaleDateString()))
+          ), 
+          React.createElement(Row, null, 
+            React.createElement(Col, {xs: 5, md: 5}, React.createElement("p", null, "start time:")), 
+            React.createElement(Col, {xs: 7, md: 7}, React.createElement("p", null, date.toLocaleTimeString()))
+          ), 
+          React.createElement(Row, null, 
+            React.createElement(Col, null, React.createElement("p", null, "current session markers:"))
+          ), 
+          marks, 
+          React.createElement(Row, null, 
+            React.createElement(Col, null, React.createElement("p", null, "current session triangulation:"))
+          ), 
+          React.createElement(Row, null, 
+            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, (triCenter) ? triCenter.lat : "")), 
+            React.createElement(Col, {xs: 6, md: 6}, React.createElement("p", null, (triCenter) ? triCenter.lng : ""))
+          ), 
+          React.createElement(Row, null, 
+            React.createElement(Col, {xsOffset: 1, mdOffset: 1}, React.createElement("p", null, (triDiameter === -1) ? "" : triDiameter + " (m)"))
           )
         )
       )
     );
   }
 });
-},{"../../config":1,"react":171,"react-bootstrap/Button":5,"react-bootstrap/ButtonGroup":6,"react-bootstrap/Col":7,"react-bootstrap/Grid":10,"react-bootstrap/Row":16}],174:[function(require,module,exports){
+},{"../../config":1,"../triUtilities":182,"react":171,"react-bootstrap/Button":5,"react-bootstrap/ButtonGroup":6,"react-bootstrap/Col":7,"react-bootstrap/Grid":10,"react-bootstrap/Row":16}],174:[function(require,module,exports){
 var React = require('react');
 var Modal = require('react-bootstrap/Modal');
 var Button = require('react-bootstrap/Button');
@@ -20766,6 +20805,10 @@ function triangulate(db, map) {
   tmp.apiPolygon.setMap(map);
   tmp.apiCircle.setMap(map);
   tmp.apiCMark.setMap(map);
+  tmp.triCenter = {};
+  tmp.triCenter.lat = center.lat();
+  tmp.triCenter.lng = center.lng();
+  tmp.triDiameter = 2*radius;
 
   // set up event handlers
   google.maps.event.clearListeners(tmp.apiCircle, "drag");
@@ -20860,14 +20903,14 @@ exports.remove = function(db, map, snap) {
         if (tmp.apiCircle) tmp.apiCircle.setMap(null);
         if (tmp.apiCMark) tmp.apiCMark.setMap(null);
         tmp.triCenter = {};
-        tmp.triDiamter = null;
+        tmp.triDiameter = -1;
       }
 
       this.setState({ saveState : null });
       db.child(tmp.sessionid).update(
         { 
           "triCenter" : tmp.triCenter,
-          "triDiameter" : tmp.triDiameter || 0
+          "triDiameter" : tmp.triDiameter || -1
         }, function(err) {
           if (err) {
             this.setState({ saveState : "error", message : err });
@@ -21401,7 +21444,7 @@ var Content = React.createClass({
       React.createElement("div", null, 
         React.createElement("div", {className: "snap-drawers"}, 
           React.createElement("div", {className: "snap-drawer snap-drawer-left inverse"}, 
-            React.createElement(CollaborationMenu, {toggleCollaborationModal: this.toggleCollaborationModal, onTrackNewHawk: this.handleTrackNewHawk, sessionID: this.state.app.sessionid})
+            React.createElement(CollaborationMenu, {toggleCollaborationModal: this.toggleCollaborationModal, onTrackNewHawk: this.handleTrackNewHawk, app: this.state.app})
           ), 
           React.createElement("div", {className: "snap-drawer snap-drawer-right inverse"}, 
             React.createElement(SettingsMenu, {onSettingsChange: this.handleSettingsChange, settings: this.state.settings, version: this.state.version})
@@ -21670,6 +21713,34 @@ exports.convertToDMSObject = function(coords) {
   var out = {},
       lat = coords.lat(),
       lng = coords.lng(),
+      degLat, degLng, minLat, minLng, secLat, secLng, dirLat, dirLng;
+
+  //latitude - N/S (pos/neg)
+  degLat = (lat | 0);
+  minLat = (Math.abs(degLat-lat) * 60) | 0;
+  secLat = Math.round((Math.abs(degLat-lat) * 3600) - (minLat * 60));
+  dirLat = (lat > 0) ? "N" : "S";
+  
+  degLat = Math.abs(degLat);
+  out.lat = degLat + String.fromCharCode(176) + " " + minLat + "' " + secLat + "\" " + dirLat;
+
+  //longitude E/W (pos/neg)
+  degLng = (lng | 0);
+  minLng = (Math.abs(degLng-lng) * 60) | 0;
+  secLng = Math.round((Math.abs(degLng-lng) * 3600) - (minLng * 60));
+  dirLng = (lng > 0) ? "E" : "W";
+
+  degLng = Math.abs(degLng);
+  out.lng = degLng + String.fromCharCode(176) + " " + minLng + "' " + secLng + "\" " + dirLng;
+
+  return out;
+
+}
+
+// same as convertToDMSObject but accepts latLng literal
+exports.convertToDMSFromLiteral = function(lat, lng) {
+
+  var out = {},
       degLat, degLng, minLat, minLng, secLat, secLng, dirLat, dirLng;
 
   //latitude - N/S (pos/neg)
