@@ -5,8 +5,12 @@ var Input = require('react-bootstrap/Input');
 var Glyphicon = require('react-bootstrap/Glyphicon');
 
 module.exports = React.createClass({
+  displayName : "SettingsMenu",
   getInitialState : function() {
     return ({ clicks : 0 });
+  },
+  handleChange : function(name, e) {
+    this.props.onSettingsChange({ name : name, value : e.target.checked });
   },
   easterEgg : function() {
     if (this.state.clicks >= 7) {
@@ -22,8 +26,8 @@ module.exports = React.createClass({
       <div className="container settings">
         <h3>Settings</h3>
         <ListGroup>
-          <ListGroupItem><Input type="checkbox" label="Unlock marker" /></ListGroupItem>
-          <ListGroupItem><Input type="checkbox" label="Enable tap marker" /></ListGroupItem>
+          <ListGroupItem><Input type="checkbox" checked={this.props.settings.unlock} onChange={this.handleChange.bind(null, "unlock")} label="Enable drag marker" /></ListGroupItem>
+          <ListGroupItem><Input type="checkbox" checked={this.props.settings.tap} onChange={this.handleChange.bind(null, "tap")} label="Enable tap marker" /></ListGroupItem>
           <ListGroupItem><a href="#">Readme</a></ListGroupItem>
           <ListGroupItem><a className="nameless" role="button" href="#" onClick={this.easterEgg}>{"app version: " + this.props.version}</a></ListGroupItem>
         </ListGroup>

@@ -1,11 +1,10 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Sets up firebase event listeners via the instance passed from the
-// main file: interface.js
+// Sets up firebase event listeners. All functions are called within a React
+// context.
 //
 ///////////////////////////////////////////////////////////////////////////////
 var utils = require('./utilities'),
-    save  = require('./save'),
     app, db, map, opts;
 
 
@@ -407,16 +406,15 @@ function panToLastMark(snap) {
 *  after the main menu button "Track New Hawk" is clicked.
 *
 ****************************************************************************/
-exports.setRead = function(old, a) {
-  app = a;
+exports.setRead = function(old, id) {
   db.child(old).child('marks').off('child_added', added);
   db.child(old).child('marks').off('child_removed', removed);
   db.child(old).child('hawkID').off('child_changed', updateHawkID);
-  db.child(app.sessionID).child('marks').on('child_added', added);
-  db.child(app.sessionID).child('marks').on('child_removed', removed);
-  db.child(app.sessionID).child('hawkID').on('child_changed', updateHawkID);
-  db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
-  db.child(app.sessionID).once('value', panToLastMark);
+  db.child(id).child('marks').on('child_added', added);
+  db.child(id).child('marks').on('child_removed', removed);
+  db.child(id).child('hawkID').on('child_changed', updateHawkID);
+  db.child(id).child('hawkID').once('value', updateHawkID);
+  db.child(id).once('value', panToLastMark);
 };
 
 /****************************************************************************
@@ -424,22 +422,18 @@ exports.setRead = function(old, a) {
 *  Initializes the database listeners
 *
 ****************************************************************************/
-exports.init = function(a, d, m, o) {
-  app = a;
-  db = d;
-  map = m;
-  opts = o;
-
+exports.init = function(id) {
+  
   /****************************************************************************
   *
   *  Firebase event on saving a new mark, deleting a saved mark, and reading 
   *  the hawkID from the database.
   * 
   ****************************************************************************/
-  db.child(app.sessionID).child('marks').on('child_added', added);
-  db.child(app.sessionID).child('marks').on('child_removed', removed);
-  db.child(app.sessionID).child('hawkID').on('child_changed', updateHawkID);
-  db.child(app.sessionID).child('hawkID').once('value', updateHawkID);
-  db.child(app.sessionID).once('value', panToLastMark);
+  db.child(id).child('marks').on('child_added', added);
+  db.child(id).child('marks').on('child_removed', removed);
+  db.child(id).child('hawkID').on('child_changed', updateHawkID);
+  db.child(id).child('hawkID').once('value', updateHawkID);
+  db.child(id).once('value', panToLastMark);
 
 }

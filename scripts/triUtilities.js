@@ -129,3 +129,36 @@ exports.convertToDMS = function(coords) {
   return out;
 
 }
+
+//
+// changes a google maps LatLng object into Degrees, Minutes, Seconds object
+// with properties lat, lng, each returning a string.
+//
+exports.convertToDMSObject = function(coords) {
+
+  var out = {},
+      lat = coords.lat(),
+      lng = coords.lng(),
+      degLat, degLng, minLat, minLng, secLat, secLng, dirLat, dirLng;
+
+  //latitude - N/S (pos/neg)
+  degLat = (lat | 0);
+  minLat = (Math.abs(degLat-lat) * 60) | 0;
+  secLat = Math.round((Math.abs(degLat-lat) * 3600) - (minLat * 60));
+  dirLat = (lat > 0) ? "N" : "S";
+  
+  degLat = Math.abs(degLat);
+  out.lat = degLat + String.fromCharCode(176) + " " + minLat + "' " + secLat + "\" " + dirLat;
+
+  //longitude E/W (pos/neg)
+  degLng = (lng | 0);
+  minLng = (Math.abs(degLng-lng) * 60) | 0;
+  secLng = Math.round((Math.abs(degLng-lng) * 3600) - (minLng * 60));
+  dirLng = (lng > 0) ? "E" : "W";
+
+  degLng = Math.abs(degLng);
+  out.lng = degLng + String.fromCharCode(176) + " " + minLng + "' " + secLng + "\" " + dirLng;
+
+  return out;
+
+}

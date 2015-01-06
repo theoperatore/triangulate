@@ -9,6 +9,7 @@ var Button = require('react-bootstrap/Button');
 var Glyphicon = require('react-bootstrap/Glyphicon');
 
 module.exports = React.createClass({
+  displayName : "TitleBar",
   render : function() {
     return (
       <div className="title-bar">

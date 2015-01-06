@@ -17,7 +17,7 @@ html, body {
 .main-menu .btn-group>.btn-lg, .title-bar .btn-group>.btn-lg {
   border-radius: 0px !important;
   border: none;
-  /*height:50px;*/
+  height:50px;
 }
 
 .main-menu {
@@ -40,12 +40,14 @@ html, body {
 .inverse .btn-group-vertical {
   width: 100%;
   text-align: center;
+  margin-bottom: 20px;
 }
 
 .inverse .btn {
   background-color: rgba(48, 48, 48, 1);
   border: 1px solid rgba(70, 69, 69, 1);
   color: rgba(221, 221, 221, 1);
+  width: 100%;
 }
 
 .inverse .btn:hover {
