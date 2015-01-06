@@ -18,28 +18,54 @@ module.exports = React.createClass({
         return;      
       }
 
-      var watchID = navigator.geolocation.watchPosition(
-        function(loc) {
-          var out = {};
-          out.lat = loc.coords.latitude;
-          out.lng = loc.coords.longitude;
+      if (this.props.settings.watch) {
+        var watchID = navigator.geolocation.watchPosition(
+          function(loc) {
+            var out = {};
+            out.lat = loc.coords.latitude;
+            out.lng = loc.coords.longitude;
 
-          console.log("found location via gps", out);
+            console.log("found location via gps", out);
 
-          this.props.onFind(out);
-          this.setState({ watchID : watchID });
-          //this.setState({ isFinding : false });
-        }.bind(this),
-        function (err){
-          alert("Error using navigator.getCurrentPosition", err.message);
-          console.log("unable to use navigator to get position", err);
-          this.setState({ isFinding : false });
-        }.bind(this),
-        { 
-          enableHighAccuracy : true,
-          maximumAge : 0
-        }
-      );
+            this.props.onFind(out);
+            this.setState({ watchID : watchID });
+            //this.setState({ isFinding : false });
+          }.bind(this),
+          function (err){
+            alert("Error using navigator.getCurrentPosition", err.message);
+            console.log("unable to use navigator to get position", err);
+            this.setState({ isFinding : false });
+          }.bind(this),
+          { 
+            enableHighAccuracy : true,
+            maximumAge : 0
+          }
+        );
+      }
+      else {
+        navigator.geolocation.getCurrentPosition(
+          function(loc) {
+            var out = {};
+            out.lat = loc.coords.latitude;
+            out.lng = loc.coords.longitude;
+
+            console.log("found location via gps", out);
+
+            this.props.onFind(out);
+            //this.setState({ watchID : watchID });
+            this.setState({ isFinding : false });
+          }.bind(this),
+          function (err){
+            alert("Error using navigator.getCurrentPosition", err.message);
+            console.log("unable to use navigator to get position", err);
+            this.setState({ isFinding : false });
+          }.bind(this),
+          { 
+            enableHighAccuracy : true,
+            maximumAge : 0
+          }
+        );
+      }
     }
     else {
       alert("GAH! Your browser does not support the GPS function!");

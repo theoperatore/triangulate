@@ -20317,28 +20317,54 @@ module.exports = React.createClass({
         return;      
       }
 
-      var watchID = navigator.geolocation.watchPosition(
-        function(loc) {
-          var out = {};
-          out.lat = loc.coords.latitude;
-          out.lng = loc.coords.longitude;
+      if (this.props.settings.watch) {
+        var watchID = navigator.geolocation.watchPosition(
+          function(loc) {
+            var out = {};
+            out.lat = loc.coords.latitude;
+            out.lng = loc.coords.longitude;
 
-          console.log("found location via gps", out);
+            console.log("found location via gps", out);
 
-          this.props.onFind(out);
-          this.setState({ watchID : watchID });
-          //this.setState({ isFinding : false });
-        }.bind(this),
-        function (err){
-          alert("Error using navigator.getCurrentPosition", err.message);
-          console.log("unable to use navigator to get position", err);
-          this.setState({ isFinding : false });
-        }.bind(this),
-        { 
-          enableHighAccuracy : true,
-          maximumAge : 0
-        }
-      );
+            this.props.onFind(out);
+            this.setState({ watchID : watchID });
+            //this.setState({ isFinding : false });
+          }.bind(this),
+          function (err){
+            alert("Error using navigator.getCurrentPosition", err.message);
+            console.log("unable to use navigator to get position", err);
+            this.setState({ isFinding : false });
+          }.bind(this),
+          { 
+            enableHighAccuracy : true,
+            maximumAge : 0
+          }
+        );
+      }
+      else {
+        navigator.geolocation.getCurrentPosition(
+          function(loc) {
+            var out = {};
+            out.lat = loc.coords.latitude;
+            out.lng = loc.coords.longitude;
+
+            console.log("found location via gps", out);
+
+            this.props.onFind(out);
+            //this.setState({ watchID : watchID });
+            this.setState({ isFinding : false });
+          }.bind(this),
+          function (err){
+            alert("Error using navigator.getCurrentPosition", err.message);
+            console.log("unable to use navigator to get position", err);
+            this.setState({ isFinding : false });
+          }.bind(this),
+          { 
+            enableHighAccuracy : true,
+            maximumAge : 0
+          }
+        );
+      }
     }
     else {
       alert("GAH! Your browser does not support the GPS function!");
@@ -20437,6 +20463,7 @@ module.exports = React.createClass({
         React.createElement(ListGroup, null, 
           React.createElement(ListGroupItem, null, React.createElement(Input, {type: "checkbox", checked: this.props.settings.unlock, onChange: this.handleChange.bind(null, "unlock"), label: "Enable drag marker"})), 
           React.createElement(ListGroupItem, null, React.createElement(Input, {type: "checkbox", checked: this.props.settings.tap, onChange: this.handleChange.bind(null, "tap"), label: "Enable tap marker"})), 
+          React.createElement(ListGroupItem, null, React.createElement(Input, {type: "checkbox", checked: this.props.settings.watch, onChange: this.handleChange.bind(null, "watch"), label: "Enable GPS toggle"})), 
           React.createElement(ListGroupItem, null, React.createElement("a", {href: "#"}, "Readme")), 
           React.createElement(ListGroupItem, null, React.createElement("a", {className: "nameless", role: "button", href: "#", onClick: this.easterEgg}, "app version: " + this.props.version))
         ), 
@@ -20750,7 +20777,8 @@ var Content = React.createClass({
       zoom   : 17,
       azDist : 4828.03, // 3 miles
       unlock : false,   // allow marker to be dragged with center of map
-      tap : true        // allow user to tap to place marker
+      tap : true,       // allow user to tap to place marker
+      watch : false     // find button toggle's GPS watchLocation
     };
 
     // check to make sure saved SessionID makes sense
@@ -20889,7 +20917,7 @@ var Content = React.createClass({
     tmpSettings[data.name] = data.value;
 
     // remove event listeners
-    if (!data.value) {
+    if (!data.value && data.name !== "watch") {
       eventType = (data.name === "unlock") ? "dragend" : eventType;
       google.maps.event.clearListeners(map, eventType);
     }
@@ -20907,7 +20935,7 @@ var Content = React.createClass({
 
         }.bind(this));
       }
-      else {
+      else if (data.name === "tap") {
         google.maps.event.addListener(map, "click", function(ev) {
 
           map.panTo(ev.latLng);
@@ -20942,10 +20970,10 @@ var Content = React.createClass({
       mark.line = null;
       mark.iinfo = null;
     });
-    tmp.apiPolygon.setMap(null);
-    tmp.apiCircle.setMap(null);
-    tmp.apiCMark.setMap(null);
-    tmp.hawkID = "";
+    if (tmp.apiPolygon) tmp.apiPolygon.setMap(null);
+    if (tmp.apiCircle) tmp.apiCircle.setMap(null);
+    if (tmp.apiCMark) tmp.apiCMark.setMap(null);
+    tmp.hawkid = "";
     tmp.marks.length = 0;
     tmp.intersects.length = 0;
     tmp.triCenter = {};
@@ -20966,14 +20994,14 @@ var Content = React.createClass({
     db.child(newSessionID).child('marks').on('child_removed', dbUtils.remove.bind(this, db, map));
     db.child(newSessionID).child('hawkID').on('child_changed', dbUtils.changeHawkid.bind(this));
 
+    // update state
+    this.setState({ app : tmp });
+
     // prompt for new hawkID
     this.toggleHawkIDModal();
 
     // close menu
     snap.close();
-
-    // update state
-    this.setState({ app : tmp });
   },
   handleCollaborate : function(id) {
     console.log("collaborate id", id);
@@ -21175,7 +21203,7 @@ var Content = React.createClass({
         React.createElement("div", {id: "content", ref: "content", className: "snap-content"}, 
           React.createElement(TitleBar, {hawkid: this.state.app.hawkid, toggleSettingsMenu: this.toggleSettingsMenu, toggleHawkMenu: this.toggleHawkMenu}), 
           React.createElement("div", {ref: "content-map-canvas", id: "content-map-canvas"}), 
-          React.createElement(FunctionsBar, {onFind: this.handleFind, saveState: this.state.saveState, message: this.state.message})
+          React.createElement(FunctionsBar, {settings: this.state.settings, onFind: this.handleFind, saveState: this.state.saveState, message: this.state.message})
         )
       )
     );

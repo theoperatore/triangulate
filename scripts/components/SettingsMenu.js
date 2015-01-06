@@ -28,6 +28,7 @@ module.exports = React.createClass({
         <ListGroup>
           <ListGroupItem><Input type="checkbox" checked={this.props.settings.unlock} onChange={this.handleChange.bind(null, "unlock")} label="Enable drag marker" /></ListGroupItem>
           <ListGroupItem><Input type="checkbox" checked={this.props.settings.tap} onChange={this.handleChange.bind(null, "tap")} label="Enable tap marker" /></ListGroupItem>
+          <ListGroupItem><Input type="checkbox" checked={this.props.settings.watch} onChange={this.handleChange.bind(null, "watch")} label="Enable GPS toggle" /></ListGroupItem>
           <ListGroupItem><a href="#">Readme</a></ListGroupItem>
           <ListGroupItem><a className="nameless" role="button" href="#" onClick={this.easterEgg}>{"app version: " + this.props.version}</a></ListGroupItem>
         </ListGroup>
