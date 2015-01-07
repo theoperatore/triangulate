@@ -29,11 +29,11 @@ module.exports = React.createClass({
           <ListGroupItem><Input type="checkbox" checked={this.props.settings.unlock} onChange={this.handleChange.bind(null, "unlock")} label="Enable drag marker" /></ListGroupItem>
           <ListGroupItem><Input type="checkbox" checked={this.props.settings.tap} onChange={this.handleChange.bind(null, "tap")} label="Enable tap marker" /></ListGroupItem>
           <ListGroupItem><Input type="checkbox" checked={this.props.settings.watch} onChange={this.handleChange.bind(null, "watch")} label="Enable GPS toggle" /></ListGroupItem>
-          <ListGroupItem><a href="#">Readme</a></ListGroupItem>
+          <ListGroupItem><a href="https://github.com/theoperatore/triangulate/blob/gh-pages/README.md">Readme</a></ListGroupItem>
           <ListGroupItem><a className="nameless" role="button" href="#" onClick={this.easterEgg}>{"app version: " + this.props.version}</a></ListGroupItem>
         </ListGroup>
         <p>Made with <Glyphicon glyph="heart"/> using cool tech like <a href="http://facebook.github.io/react/">React.js</a>, <a href="https://github.com/jakiestfu/Snap.js/">Snap.js</a>, <a href="http://react-bootstrap.github.io/">React-Bootstrap</a>, <a href="https://www.firebase.com/">Firebase</a>, and <a href="http://pages.github.com">GitHub Pages</a></p>
-        <p>{ "Check out the " } <a href="#">repo</a> { " for issues, contributing, and other cool code-y stuff! " + String.fromCharCode(169) + "2015"}</p>
+        <p>{ "Check out the " } <a href="https://github.com/theoperatore/triangulate">repo</a> { " for issues, contributing, and other cool code-y stuff! " + String.fromCharCode(169) + "2015"}</p>
         <p></p>
       </div>
     );
