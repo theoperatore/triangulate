@@ -71,7 +71,7 @@ var Content = React.createClass({
       collaborationSessions : [],
       saveState : null,
       message : null,
-      version : "0.9.0a"
+      version : "0.9.0"
     });
   },
   componentDidMount: function () {
@@ -275,7 +275,7 @@ var Content = React.createClass({
     tmp.intersects.length = 0;
     tmp.triCenter = {};
     tmp.triDiameter = -1;
-    tmp.sessionid = id;
+    tmp.sessionid = parseInt(id,10);
 
     // use old sessionID to remove old Firebase bindings
     db.child(old).child('marks').off('child_added', dbUtils.add.bind(this, db, map));
@@ -292,6 +292,8 @@ var Content = React.createClass({
       if (tmp.hawkid === "" || !tmp.hawkid) {
         this.setState({ needsHawkID : true });
       }
+
+      this.setState({ app : tmp });
     }.bind(this));
 
     // pan to mark bounds
@@ -315,6 +317,8 @@ var Content = React.createClass({
     var tmp = this.state.app;
     tmp.hawkid = data.hawkid;
     this.setState({ app : tmp, saveState : null });
+
+    // save data
     db.child(tmp.sessionid).update({
       "sessionID" : tmp.sessionid,
       "hawkID" : tmp.hawkid
@@ -326,6 +330,61 @@ var Content = React.createClass({
         this.setState({ saveState : "ok" });
       }
     }.bind(this));
+
+    // save session if it doesn't exist
+    sessiondb.once("value", function(sessions) {
+      if (sessions.val()) {
+
+        var keys = Object.keys(sessions.val()),
+            found = false;
+
+        for (var i = 0; i < keys.length; i++) {
+          if (tmp.sessionid === sessions.val()[keys[i]].id) {
+            console.log("matched saved sessionID, not adding");
+            found = true;
+            break;
+          }
+        }
+
+        if (!found) {
+          console.log("saving new sessionID");
+          sessiondb.push({ id : tmp.sessionid });
+        }
+      }
+      else {
+        console.log("no sessionIDs found, adding");
+        sessiondb.push({ id : tmp.sessionid });
+      }
+    });
+
+    // add the sessionID to hawkdb if not yet
+    hawkdb.once("value", function(hawks) {
+      var cleanHawkID = tmp.hawkid.replace(".", "_");
+      if (hawks.val() && hawks.val()[cleanHawkID]) {
+        
+        var keys = Object.keys(hawks.val()[cleanHawkID]),
+            found = false;
+
+        for (var i = 0; i < keys.length; i++) {
+          if (tmp.sessionid === hawks.val()[cleanHawkID][keys[i]].sessionID) {
+            console.log("sessionID found for this hawkID, not adding.");
+            found = true;
+            break;
+          }
+        }
+
+        // push new sessionID for this hawk
+        if (!found) {
+          console.log("hawkID found, new sessionID saved");
+          hawkdb.child(cleanHawkID).push({ sessionID : tmp.sessionid });
+        }
+      }
+      else {
+        console.log("new hawkID found, adding to db");
+        //hawks.child(app.hawkID).child("sessions").push({sessionID : app.sessionID});
+        hawkdb.child(cleanHawkID).push({ sessionID : tmp.sessionid });
+      }
+    });
   },
 
   /////////////////////////////////////////////////////////////////////////////
@@ -376,7 +435,7 @@ var Content = React.createClass({
 
         for (var i = 0; i < keys.length; i++) {
           if (tmp.sessionid === sessions.val()[keys[i]].id) {
-            console.log("found saved sessionID, not adding");
+            console.log("matched saved sessionID, not adding");
             found = true;
             break;
           }

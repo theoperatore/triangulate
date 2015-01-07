@@ -26,7 +26,7 @@ module.exports = React.createClass({
     return (<Modal title="Collaboration on which session?" onRequestHide={this.props.onToggleOpen}>
       <div className="modal-body">
         <Input onChange={this.handleChange} type="select" value={this.state.sessionid}>
-          <option value="session">Select a Session</option>
+          <option disabled value="session">Select a Session</option>
           {sessions}
         </Input>
       </div>

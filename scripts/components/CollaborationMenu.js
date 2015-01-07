@@ -38,6 +38,12 @@ module.exports = React.createClass({
         </ButtonGroup>
         <Grid className="animal-info" fluid>
           <Row>
+            <Col><p>Affiliation:</p></Col>
+          </Row>
+          <Row>
+            <Col xsOffset={1} mdOffset={1}><p>{config.affiliation}</p></Col>
+          </Row>
+          <Row>
             <Col><p>current session info:</p></Col>
           </Row>
           <Row>

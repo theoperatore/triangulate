@@ -3,9 +3,9 @@ var React = require('react/addons'),
     Firebase = require('firebase'),
     db = new Firebase("https://tri-hawk-ulate.firebaseio.com/data-beta"),
     hawksdb = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
-    utils = require('./admin-scripts/utils'),
+    utils = require('./utils'),
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup,
-    Download = require('./admin-scripts/download'),
+    Download = require('./download'),
     ModalTrigger = require('react-bootstrap/ModalTrigger'),
     App, Header, Session, Hawk;
 
