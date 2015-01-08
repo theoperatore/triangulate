@@ -1,8 +1,9 @@
 /** @jsx React.DOM */
 var React = require('react/addons'),
     Firebase = require('firebase'),
-    db = new Firebase("https://tri-hawk-ulate.firebaseio.com/data-beta"),
-    hawksdb = new Firebase("https://tri-hawk-ulate.firebaseio.com/hawks-beta"),
+    config = require('../../config'),
+    db = new Firebase(config.dataDB),
+    hawksdb = new Firebase(config.hawkDB),
     utils = require('./utils'),
     ReactCSSTransitionGroup = React.addons.CSSTransitionGroup,
     Download = require('./download'),
@@ -35,7 +36,7 @@ Header = React.createClass({
     sortClass += (this.props.options.sort === "hawkid") ? " btn-info active" : " btn-default";
     return (
       <header className="container-fluid page-header clearfix">
-        <h1 className="pull-left">Tri-hawk-ulate <small>admin</small></h1>
+        <h1 className="pull-left">{"Tri-"+config.animal+"-ulate"} <small>admin</small></h1>
         <ul className="nav nav-pills pull-right" role="navigation">
           <li role="presentation"><button onClick={this.handleSort} title="Sort by HawkID" className={sortClass}><span className="glyphicon glyphicon-th-large"></span></button></li>
           <li role="presentation"><button onClick={this.handleRefresh} title="Refresh" className="btn btn-default btn-lg"><span className="glyphicon glyphicon-refresh"></span><span className="badge">{this.props.numNewDatas || ""}</span></button></li>
