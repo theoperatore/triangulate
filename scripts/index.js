@@ -6,6 +6,7 @@ var db = new Firebase(config.dataDB);
 var sessiondb = new Firebase(config.sessionDB);
 var hawkdb = new Firebase(config.hawkDB); 
 var map;
+var snap;
 
 // require components
 var TitleBar = require('./components/TitleBar');
@@ -71,7 +72,7 @@ var Content = React.createClass({
       collaborationSessions : [],
       saveState : null,
       message : null,
-      version : "0.9.01"
+      version : "0.9.02"
     });
   },
   componentDidMount: function () {
@@ -258,7 +259,6 @@ var Content = React.createClass({
 
     console.log("collaborate id", id);
     this.toggleCollaborationModal();
-    snap.close();
 
     // visually erase saved Markers
     tmp.marks.forEach(function(mark) {
@@ -309,6 +309,7 @@ var Content = React.createClass({
     this.setState({ needsAzimuth : !this.state.needsAzimuth });
   },
   toggleCollaborationModal : function() {
+    snap.close();
     this.setState({ needsCollaboration : !this.state.needsCollaboration });
   },
   handleHawkIDSubmit : function(data) {
