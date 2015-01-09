@@ -18,8 +18,11 @@ module.exports = React.createClass({
     var sessions = [];
 
     for (var i = 0; i < this.props.sessions.length; i++) {
+      var time = new Date(this.props.sessions[i]).toLocaleString();
+      time = time.replace(/at|EST|CST|PST/g , " ");
+
       sessions.unshift(
-        <option key={i} value={this.props.sessions[i]}>{new Date(this.props.sessions[i]).toLocaleString()}</option>
+        <option key={i} value={this.props.sessions[i]}>{time}</option>
       );
     }
 
