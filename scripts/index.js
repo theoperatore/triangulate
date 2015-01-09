@@ -72,7 +72,7 @@ var Content = React.createClass({
       collaborationSessions : [],
       saveState : null,
       message : null,
-      version : "0.9.01"
+      version : "0.9.02"
     });
   },
   componentDidMount: function () {
