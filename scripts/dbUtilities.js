@@ -46,7 +46,7 @@ function sorting(map, m1, m2) {
   }
 
   // if either slope is positive, it gets priority
-  if (s1  > 0 && s2 >= 0) return -1;
+  if (s1  > 0 && s2 <= 0) return -1;
   if (s1 <= 0 && s2  > 0) return  1;
 
   // both slopes have the same sign, the smaller one gets priority.
