@@ -229,7 +229,7 @@ exports.remove = function(db, map, snap) {
 exports.changeHawkid = function(snap) {
   var id = snap.val();
   var tmp = this.state.app;
-  tmp.hawkid = id;
+  tmp.hawkid = id || "Start Tracking!";
   this.setState({ app : tmp });
 }
 
