@@ -31,6 +31,7 @@ var Content = React.createClass({
 
     // vars
     var app = {};
+    var hawkid = "loading...";
     var sessionID = parseInt(localStorage.getItem('tri-hawk-ulate__sessionID'),10);
     var needsHawkID = false;
     var settings = JSON.parse(localStorage.getItem('tri-hawk-ulate__options')) || {
@@ -42,16 +43,17 @@ var Content = React.createClass({
     };
 
     // check to make sure saved SessionID makes sense
-    if (sessionID === void(0) || isNaN(sessionID)) {
+    if (sessionID === undefined || isNaN(sessionID)) {
       sessionID = +new Date;
       console.log("saving new session", sessionID);
       localStorage.setItem("tri-hawk-ulate__sessionID", sessionID);
       needsHawkID = true;
+      hawkid = "Start Tracking!";
     }
 
     // set up the 'app' construct?
     app.sessionid = sessionID;
-    app.hawkid = "";
+    app.hawkid = hawkid;
     app.marks = [];
     app.curr = new google.maps.Marker();
     app.currInfo = new google.maps.InfoWindow();
@@ -72,7 +74,7 @@ var Content = React.createClass({
       collaborationSessions : [],
       saveState : null,
       message : null,
-      version : "0.9.02"
+      version : "0.9.03"
     });
   },
   componentDidMount: function () {

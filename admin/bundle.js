@@ -424,8 +424,8 @@ module.exports = Download;
 * MarkListID, DateTaken, Latitude, Longitude, SignalStrength, Azimuth
 ****************************************************************************/
 exports.getCSV = function(data) {
-  var sessions = "SessionID, HawkID, MarkListID, CenterLatitude, CenterLongitude, Diameter\n",
-      marks = "MarkListID, DateTaken, Latitude, Longitude, SignalStrength, Azimuth\n";
+  var sessions = "SessionID, HawkID, pointID, CenterLatitude, CenterLongitude, Diameter\n",
+      marks = "pointID, DateTaken, Latitude, Longitude, SignalStrength, Azimuth\n";
 
   Object.keys(data).forEach(function(key) {
     var session = data[key];
@@ -443,16 +443,19 @@ exports.getCSV = function(data) {
     sessions += "\n";
 
     // add this session's marks to the CSV string
-    Object.keys(session.marks).forEach(function(mkey) {
-      var mark = session.marks[mkey];
+    if (session.marks) {
+      Object.keys(session.marks).forEach(function(mkey) {
+        var mark = session.marks[mkey];
+        var date = new Date(mark.date).toString().replace(",", "");
 
-      marks += session.sessionID + "," +
-               mark.date         + "," +
-               mark.lat          + "," +
-               mark.lng          + "," +
-               mark.sig          + "," +
-               mark.az           + "\n";
-    });
+        marks += session.sessionID + "," +
+                 date              + "," +
+                 mark.lat          + "," +
+                 mark.lng          + "," +
+                 mark.sig          + "," +
+                 mark.az           + "\n";
+      });
+    }
 
   });
 

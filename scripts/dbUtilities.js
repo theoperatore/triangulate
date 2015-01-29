@@ -243,7 +243,7 @@ exports.panToLastMark = function(map, db) {
     var bounds = new google.maps.LatLngBounds();
     var keys;
 
-    if (val) {
+    if (val && val.marks) {
       keys = Object.keys(val.marks);
       keys.forEach(function(key) {
         bounds.extend(new google.maps.LatLng(val.marks[key].lat, val.marks[key].lng));
