@@ -3,11 +3,14 @@ Triangulate (Tri-Hawk-ulate)
 
 current version: 0.9.0
 
-Uses the [GoogleMaps APIv3](https://developers.google.com/maps/documentation/javascript/reference) to get the user's current GPS location for Raptor Triangulation! 
+Uses the [GoogleMaps APIv3](https://developers.google.com/maps/documentation/javascript/reference) to get the user's current GPS location for Raptor Triangulation!
+
+People
+======
+
+Built in collaboration with **Shelby Petersen** (smpetersen.523@gmail.com) who designed, tested, and used this application for research.
 
 This app is being developed specifically for the [Four Lakes Wildlife Center](https://www.giveshelter.org/four-lakes-wildlife-center.html), but feel free to use the app and go nuts as tri-hawk-ulation knows no bounds...
-
-**Once I nail down some things, I'll write up an easy set up for hosting your own triangulation app!**
 
 Usage
 =====
